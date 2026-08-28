@@ -30,3 +30,8 @@ from .reputation import (
     LeaderboardAgentItem,
     ReputationSummaryResponse,
 )
+from .human_review import (
+    HumanReviewResponse,
+    HumanReviewAuditLogResponse,
+    HumanReviewResolvePayload,
+)

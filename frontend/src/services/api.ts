@@ -1716,5 +1716,107 @@ export async function recalculateAllReputations(): Promise<{ status: string; rec
 
 
 
+// ─────────────────────────────────────────────────────────────
+// Phase 14 — Human Review
+// ─────────────────────────────────────────────────────────────
 
+export interface HumanReviewAuditLog {
+  id: number;
+  review_id: number;
+  action: string;
+  actor_type: string;
+  actor_id: string | null;
+  message: string | null;
+  created_at: string;
+}
 
+export interface HumanReview {
+  id: number;
+  review_code: string | null;
+  task_id: number;
+  submission_id: number;
+  verification_id: number;
+  worker_agent_id: number;
+  status: string;
+  decision: string | null;
+  reviewer_note: string | null;
+  created_at: string;
+  updated_at: string;
+  started_at: string | null;
+  resolved_at: string | null;
+}
+
+export interface ResolveReviewPayload {
+  decision: 'APPROVE' | 'REJECT';
+  reviewer_note: string;
+}
+
+/** GET /api/reviews */
+export async function fetchHumanReviews(statusFilter?: string): Promise<HumanReview[]> {
+  const url = statusFilter
+    ? `${API_BASE_URL}/api/reviews?status=${encodeURIComponent(statusFilter)}`
+    : `${API_BASE_URL}/api/reviews`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || 'Failed to fetch human reviews');
+  }
+  return res.json();
+}
+
+/** GET /api/reviews/:id */
+export async function fetchHumanReview(id: number): Promise<HumanReview> {
+  const res = await fetch(`${API_BASE_URL}/api/reviews/${id}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || 'Failed to fetch human review');
+  }
+  return res.json();
+}
+
+/** GET /api/tasks/:taskId/review */
+export async function fetchHumanReviewByTask(taskId: number): Promise<HumanReview> {
+  const res = await fetch(`${API_BASE_URL}/api/tasks/${taskId}/review`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || 'No human review found for this task');
+  }
+  return res.json();
+}
+
+/** POST /api/reviews/:id/start */
+export async function startHumanReview(id: number): Promise<HumanReview> {
+  const res = await fetch(`${API_BASE_URL}/api/reviews/${id}/start`, {
+    method: 'POST',
+    headers: { 'Accept': 'application/json' },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || 'Failed to start review');
+  }
+  return res.json();
+}
+
+/** POST /api/reviews/:id/resolve */
+export async function resolveHumanReview(id: number, payload: ResolveReviewPayload): Promise<HumanReview> {
+  const res = await fetch(`${API_BASE_URL}/api/reviews/${id}/resolve`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || 'Failed to resolve review');
+  }
+  return res.json();
+}
+
+/** GET /api/reviews/:id/audit */
+export async function fetchHumanReviewAudit(id: number): Promise<HumanReviewAuditLog[]> {
+  const res = await fetch(`${API_BASE_URL}/api/reviews/${id}/audit`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || 'Failed to fetch audit logs');
+  }
+  return res.json();
+}

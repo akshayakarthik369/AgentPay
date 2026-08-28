@@ -10,7 +10,8 @@ import {
   ShieldCheck, 
   Coins, 
   ShieldAlert, 
-  Users 
+  Users,
+  Gavel
 } from 'lucide-react';
 
 interface StatusBadgeProps {
@@ -78,6 +79,11 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, size = 'md' })
         return {
           bg: 'bg-orange-50 text-orange-700 border-orange-200',
           icon: <ShieldAlert className="w-3.5 h-3.5 shrink-0 text-orange-600" />
+        };
+      case 'Review Required':
+        return {
+          bg: 'bg-amber-50 text-amber-800 border-amber-400 font-semibold',
+          icon: <Gavel className="w-3.5 h-3.5 shrink-0 text-amber-700 animate-pulse" />
         };
       default:
         return {

@@ -372,6 +372,21 @@ def run_verification(db: Session, verification_id: int) -> Verification:
         if verifier:
             verifier.status = "available"
 
+        # Phase 14: Auto-create human review queue entry
+        try:
+            from app.services import human_review_service
+            db.flush()  # Ensure verification has an id before creating review
+            human_review_service.create_human_review(
+                db=db,
+                task_id=task.id if task else submission.task_id,
+                submission_id=submission.id,
+                verification_id=verification.id,
+                worker_agent_id=worker.id if worker else submission.worker_agent_id,
+            )
+        except Exception as hr_err:
+            # Non-blocking — review creation failure should not abort verification
+            print(f"Human review creation note: {hr_err}")
+
     # ── Step 6: Audit Trail ───────────────────────────────────────────────────
     _log_verification_audit(
         db,

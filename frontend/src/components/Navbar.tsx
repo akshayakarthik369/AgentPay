@@ -14,7 +14,8 @@ import {
   CheckCircle2, 
   XCircle, 
   RefreshCw,
-  Users
+  Users,
+  Gavel
 } from 'lucide-react';
 
 import { DepthIcon } from './DepthIcon';
@@ -63,7 +64,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'wallet',           label: 'Wallet',        icon: <Wallet className="w-3.5 h-3.5" /> },
     { id: 'verification',     label: 'Verification',  icon: <ShieldCheck className="w-3.5 h-3.5" /> },
     { id: 'reputation',       label: 'Reputation',    icon: <Award className="w-3.5 h-3.5" /> },
-    { id: 'disputes',         label: 'Disputes',      icon: <ShieldAlert className="w-3.5 h-3.5" /> },
+    { id: 'disputes',         label: 'Human Review',  icon: <Gavel className="w-3.5 h-3.5" /> },
   ];
 
   const handleNavClick = (tab: NavTab) => {

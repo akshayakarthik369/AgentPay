@@ -9,7 +9,8 @@ export type TaskStatus =
   | 'Verified' 
   | 'Payment Released' 
   | 'Failed' 
-  | 'Disputed';
+  | 'Disputed'
+  | 'Review Required';
 
 
 export interface Task {

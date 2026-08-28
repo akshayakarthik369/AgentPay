@@ -50,7 +50,8 @@ import {
   FileCheck,
   Hash,
   Lock,
-  Coins
+  Coins,
+  Gavel
 } from 'lucide-react';
 import { Interactive3DCard } from '../components/Interactive3DCard';
 import { DepthIcon } from '../components/DepthIcon';
@@ -489,6 +490,16 @@ export const TaskDetailsPage: React.FC<TaskDetailsPageProps> = ({
                     >
                       <ShieldCheck className="w-4 h-4" />
                       <span>View Verification Dossier</span>
+                    </button>
+                  )}
+
+                  {taskVerification && taskVerification.decision === 'REVIEW' && (
+                    <button
+                      onClick={() => onNavigate('disputes')}
+                      className="flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-bold text-xs shadow-md transition-all animate-pulse"
+                    >
+                      <Gavel className="w-4 h-4" />
+                      <span>Open Human Review</span>
                     </button>
                   )}
 
