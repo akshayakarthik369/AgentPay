@@ -467,46 +467,50 @@ def select_winning_bid(db: Session, task_id: int, bid_id: int) -> Dict[str, Any]
     # 4. Atomic Transactional Updates
     now = datetime.utcnow()
 
-    # Update Task
-    task.status = "assigned"
-    task.assigned_agent_id = agent.id
-    task.selected_bid_id = bid.id
-    task.assigned_at = now
-    task.updated_at = now
+    try:
+        # Update Task
+        task.status = "assigned"
+        task.assigned_agent_id = agent.id
+        task.selected_bid_id = bid.id
+        task.assigned_at = now
+        task.updated_at = now
 
-    # Update Winning Bid
-    bid.status = "accepted"
-    bid.accepted_at = now
-    bid.updated_at = now
+        # Update Winning Bid
+        bid.status = "accepted"
+        bid.accepted_at = now
+        bid.updated_at = now
 
-    # Reject other competing pending bids on the same task
-    db.query(Bid).filter(
-        Bid.task_id == task_id,
-        Bid.id != bid_id,
-        Bid.status == "pending",
-    ).update({
-        "status": "rejected",
-        "rejected_at": now,
-        "updated_at": now,
-    })
+        # Reject other competing pending bids on the same task
+        db.query(Bid).filter(
+            Bid.task_id == task_id,
+            Bid.id != bid_id,
+            Bid.status == "pending",
+        ).update({
+            "status": "rejected",
+            "rejected_at": now,
+            "updated_at": now,
+        })
 
-    # Set Agent status to busy
-    agent.status = "busy"
-    agent.updated_at = now
+        # Set Agent status to busy
+        agent.status = "busy"
+        agent.updated_at = now
 
-    # 5. Atomically create Escrow and lock task reward from Requester Wallet
-    escrow = escrow_service.create_escrow_for_task(
-        db=db,
-        task=task,
-        worker_agent_id=agent.id,
-        reward_amount=task.reward,
-    )
+        # 5. Atomically create Escrow and lock task reward from Requester Wallet
+        escrow = escrow_service.create_escrow_for_task(
+            db=db,
+            task=task,
+            worker_agent_id=agent.id,
+            reward_amount=task.reward,
+        )
 
-    db.commit()
-    db.refresh(task)
-    db.refresh(bid)
-    db.refresh(agent)
-    db.refresh(escrow)
+        db.commit()
+        db.refresh(task)
+        db.refresh(bid)
+        db.refresh(agent)
+        db.refresh(escrow)
+    except Exception as e:
+        db.rollback()
+        raise e
 
     return {
         "message": f"Bid {bid.bid_code} accepted. Task {task.task_code} successfully assigned to agent {agent.name}. {task.reward} AP locked in escrow {escrow.escrow_code}.",

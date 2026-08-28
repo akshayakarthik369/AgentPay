@@ -13,6 +13,7 @@ import { ExecutionPage } from './pages/ExecutionPage';
 import { SubmissionDetailsPage } from './pages/SubmissionDetailsPage';
 import { VerificationPage } from './pages/VerificationPage';
 import { VerificationDetailsPage } from './pages/VerificationDetailsPage';
+import { SettlementDetailsPage } from './pages/SettlementDetailsPage';
 import { WalletPage } from './pages/WalletPage';
 import { ReputationPage } from './pages/ReputationPage';
 import { DisputesPage } from './pages/DisputesPage';
@@ -26,6 +27,7 @@ export function App() {
   const [selectedExecutionId, setSelectedExecutionId] = useState<number | null>(null);
   const [selectedSubmissionId, setSelectedSubmissionId] = useState<number | null>(null);
   const [selectedVerificationId, setSelectedVerificationId] = useState<number | null>(null);
+  const [selectedSettlementId, setSelectedSettlementId] = useState<number | null>(null);
   const [backendStatus, setBackendStatus] = useState<'connected' | 'disconnected' | 'checking'>('checking');
 
   const fetchHealth = useCallback(async () => {
@@ -73,12 +75,23 @@ export function App() {
     setActiveTab('verification-details');
   };
 
+  const handleSelectSettlement = (id: number) => {
+    setSelectedSettlementId(id);
+    setActiveTab('settlement-details');
+  };
+
   const renderMainContent = () => {
     switch (activeTab) {
       case 'home':
         return <Home onNavigate={setActiveTab} backendStatus={backendStatus} />;
       case 'client-dashboard':
-        return <ClientDashboardPage onNavigate={setActiveTab} />;
+        return (
+          <ClientDashboardPage
+            onNavigate={setActiveTab}
+            onSelectTask={handleSelectTask}
+            onSelectSettlement={handleSelectSettlement}
+          />
+        );
       case 'create-task':
         return <CreateTaskPage onNavigate={setActiveTab} />;
       case 'tasks':
@@ -91,6 +104,7 @@ export function App() {
             onSelectExecution={handleSelectExecution}
             onSelectSubmission={handleSelectSubmission}
             onSelectVerification={handleSelectVerification}
+            onSelectSettlement={handleSelectSettlement}
           />
         );
       case 'agents':
@@ -141,10 +155,28 @@ export function App() {
             onBack={() => setActiveTab('verification')}
             onNavigateToSubmission={handleSelectSubmission}
             onNavigateToTask={(tid) => handleSelectTask(String(tid))}
+            onNavigateToSettlement={handleSelectSettlement}
+          />
+        );
+      case 'settlement-details':
+        return (
+          <SettlementDetailsPage
+            settlementId={selectedSettlementId || 1}
+            onBack={() => setActiveTab('wallet')}
+            onNavigateToTask={(tid) => handleSelectTask(String(tid))}
+            onNavigateToAgent={handleSelectAgent}
+            onNavigateToVerification={handleSelectVerification}
+            onNavigate={setActiveTab}
           />
         );
       case 'wallet':
-        return <WalletPage onNavigate={setActiveTab} />;
+        return (
+          <WalletPage
+            onNavigate={setActiveTab}
+            onSelectSettlement={handleSelectSettlement}
+            onSelectTask={handleSelectTask}
+          />
+        );
       case 'reputation':
         return <ReputationPage onNavigate={setActiveTab} />;
       case 'disputes':

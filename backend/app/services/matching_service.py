@@ -77,39 +77,39 @@ def calculate_reputation_score(agent: Agent, task: Task) -> Tuple[float, str]:
     Compares agent.reputation_score against task.minimum_reputation.
     """
     min_rep = task.minimum_reputation or 0
-    agent_rep = agent.reputation_score if agent.reputation_score is not None else 80
+    agent_rep = float(agent.reputation_score if agent.reputation_score is not None else 80.0)
 
     if min_rep <= 0:
         return 100.0, "No minimum reputation required"
 
     if agent_rep >= min_rep:
-        surplus = agent_rep - min_rep
+        surplus = round(agent_rep - min_rep, 1)
         score = 100.0
-        reason = f"Reputation ({agent_rep}) satisfies requirement (min {min_rep})"
+        reason = f"Reputation ({agent_rep:.1f}) satisfies requirement (min {min_rep})"
         if surplus > 10:
-            reason = f"Reputation ({agent_rep}) exceeds minimum requirement by {surplus} points"
+            reason = f"Reputation ({agent_rep:.1f}) exceeds minimum requirement by {surplus} points"
         return score, reason
     else:
-        deficit = min_rep - agent_rep
+        deficit = round(min_rep - agent_rep, 1)
         score = max(0.0, round(100.0 - (deficit * 3.0), 1))
-        reason = f"Reputation ({agent_rep}) is {deficit} points below required minimum ({min_rep})"
+        reason = f"Reputation ({agent_rep:.1f}) is {deficit} points below required minimum ({min_rep})"
         return score, reason
 
 
 def calculate_quality_score(agent: Agent, task: Task) -> Tuple[float, str]:
     """
     Calculate historical quality factor (0 to 100).
-    Compares agent.average_verification_score against task.minimum_quality_score.
-    Uses DEFAULT_NEW_AGENT_QUALITY baseline if agent has 0 completed tasks.
+    Compares agent.average_quality_score against task.minimum_quality_score.
+    Uses DEFAULT_NEW_AGENT_QUALITY baseline if agent has 0 verified tasks.
     """
     min_qual = task.minimum_quality_score or 0
-    is_new = (agent.tasks_completed or 0) == 0
+    is_new = (getattr(agent, "total_verified_tasks", 0) or agent.tasks_completed or 0) == 0
 
     if is_new:
         agent_qual = DEFAULT_NEW_AGENT_QUALITY
         base_note = f"New agent quality baseline used ({DEFAULT_NEW_AGENT_QUALITY:.0f})"
     else:
-        agent_qual = agent.average_verification_score or DEFAULT_NEW_AGENT_QUALITY
+        agent_qual = getattr(agent, "average_quality_score", None) or agent.average_verification_score or DEFAULT_NEW_AGENT_QUALITY
         base_note = f"Historical verification quality is {agent_qual:.1f}"
 
     if min_qual <= 0:
@@ -126,9 +126,9 @@ def calculate_quality_score(agent: Agent, task: Task) -> Tuple[float, str]:
 def calculate_success_score(agent: Agent) -> Tuple[float, str]:
     """
     Calculate success rate factor (0 to 100).
-    Uses DEFAULT_NEW_AGENT_SUCCESS_RATE if agent has 0 completed tasks.
+    Uses DEFAULT_NEW_AGENT_SUCCESS_RATE if agent has 0 verified tasks.
     """
-    is_new = (agent.tasks_completed or 0) == 0
+    is_new = (getattr(agent, "total_verified_tasks", 0) or agent.tasks_completed or 0) == 0
     if is_new:
         return DEFAULT_NEW_AGENT_SUCCESS_RATE, f"New agent success rate baseline used ({DEFAULT_NEW_AGENT_SUCCESS_RATE:.0f}%)"
 

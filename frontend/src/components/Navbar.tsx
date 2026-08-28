@@ -33,6 +33,7 @@ export type NavTab =
   | 'submission-details'
   | 'verification' 
   | 'verification-details'
+  | 'settlement-details'
   | 'wallet' 
   | 'reputation' 
   | 'disputes';

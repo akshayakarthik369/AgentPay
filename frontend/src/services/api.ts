@@ -1206,6 +1206,514 @@ export async function fetchVerifications(limit = 50, offset = 0): Promise<ApiVer
   return await response.json();
 }
 
+// ---------------------------------------------------------------------------
+// Phase 11: Wallets & Escrows
+// ---------------------------------------------------------------------------
+
+export interface ApiWallet {
+  id?: number;
+  wallet_code: string;
+  owner_type: 'requester' | 'agent';
+  owner_id: number;
+  available_balance: number;
+  locked_balance: number;
+  total_balance: number;
+  total_earned: number;
+  total_spent: number;
+  currency: string;
+  is_active: boolean;
+}
+
+export interface ApiEscrowAuditLog {
+  id: number;
+  escrow_id: number;
+  action: string;
+  actor_type: string;
+  actor_id?: string;
+  message: string;
+  amount?: number;
+  created_at: string;
+}
+
+export interface ApiEscrow {
+  id: number;
+  escrow_code: string;
+  task_id: number;
+  task_code?: string;
+  task_title?: string;
+  requester_wallet_id: number;
+  requester_wallet_code?: string;
+  worker_agent_id: number;
+  worker_agent_name?: string;
+  worker_agent_code?: string;
+  worker_wallet_id: number;
+  worker_wallet_code?: string;
+  verification_id?: number;
+  verification_decision?: string;
+  reward_amount: number;
+  status: 'locked' | 'releasable' | 'blocked' | 'released' | 'refunded' | 'cancelled';
+  locked_at: string;
+  releasable_at?: string;
+  released_at?: string;
+  refunded_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ApiEscrowSummary {
+  total_locked: number;
+  total_releasable: number;
+  total_blocked: number;
+  total_released: number;
+  count_locked: number;
+  count_releasable: number;
+  count_blocked: number;
+  count_released: number;
+  count_total: number;
+}
+
+/** GET /api/client/wallet */
+export async function fetchClientWallet(): Promise<ApiWallet> {
+  const response = await fetch(`${API_BASE_URL}/api/client/wallet`, {
+    headers: { 'Accept': 'application/json' },
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => null);
+    throw new Error(err?.detail || `Failed to fetch client wallet: ${response.statusText}`);
+  }
+  return await response.json();
+}
+
+/** GET /api/agents/{id}/wallet */
+export async function fetchAgentWallet(agentId: number): Promise<ApiWallet> {
+  const response = await fetch(`${API_BASE_URL}/api/agents/${agentId}/wallet`, {
+    headers: { 'Accept': 'application/json' },
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => null);
+    throw new Error(err?.detail || `Failed to fetch agent wallet: ${response.statusText}`);
+  }
+  return await response.json();
+}
+
+/** GET /api/wallets/{id} */
+export async function fetchWallet(walletId: number): Promise<ApiWallet> {
+  const response = await fetch(`${API_BASE_URL}/api/wallets/${walletId}`, {
+    headers: { 'Accept': 'application/json' },
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => null);
+    throw new Error(err?.detail || `Failed to fetch wallet: ${response.statusText}`);
+  }
+  return await response.json();
+}
+
+/** GET /api/escrows */
+export async function fetchEscrows(status?: string, taskId?: number): Promise<ApiEscrow[]> {
+  const query = new URLSearchParams();
+  if (status) query.append('status', status);
+  if (taskId) query.append('task_id', taskId.toString());
+  const qs = query.toString() ? `?${query.toString()}` : '';
+  const response = await fetch(`${API_BASE_URL}/api/escrows${qs}`, {
+    headers: { 'Accept': 'application/json' },
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => null);
+    throw new Error(err?.detail || `Failed to fetch escrows: ${response.statusText}`);
+  }
+  return await response.json();
+}
+
+/** GET /api/escrows/{id} */
+export async function fetchEscrow(escrowId: number): Promise<ApiEscrow> {
+  const response = await fetch(`${API_BASE_URL}/api/escrows/${escrowId}`, {
+    headers: { 'Accept': 'application/json' },
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => null);
+    throw new Error(err?.detail || `Failed to fetch escrow: ${response.statusText}`);
+  }
+  return await response.json();
+}
+
+/** GET /api/tasks/{taskId}/escrow */
+export async function fetchTaskEscrow(taskId: number): Promise<ApiEscrow | null> {
+  const response = await fetch(`${API_BASE_URL}/api/tasks/${taskId}/escrow`, {
+    headers: { 'Accept': 'application/json' },
+  });
+  if (response.status === 404) return null;
+  if (!response.ok) {
+    const err = await response.json().catch(() => null);
+    throw new Error(err?.detail || `Failed to fetch task escrow: ${response.statusText}`);
+  }
+  return await response.json();
+}
+
+/** GET /api/escrows/{id}/audit */
+export async function fetchEscrowAudit(escrowId: number): Promise<ApiEscrowAuditLog[]> {
+  const response = await fetch(`${API_BASE_URL}/api/escrows/${escrowId}/audit`, {
+    headers: { 'Accept': 'application/json' },
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => null);
+    throw new Error(err?.detail || `Failed to fetch escrow audit: ${response.statusText}`);
+  }
+  return await response.json();
+}
+
+/** GET /api/escrows/summary */
+export async function fetchEscrowSummary(): Promise<ApiEscrowSummary> {
+  const response = await fetch(`${API_BASE_URL}/api/escrows/summary`, {
+    headers: { 'Accept': 'application/json' },
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => null);
+    throw new Error(err?.detail || `Failed to fetch escrow summary: ${response.statusText}`);
+  }
+  return await response.json();
+}
+
+// ---------------------------------------------------------------------------
+// Phase 12: Conditional Automatic Settlement
+// ---------------------------------------------------------------------------
+
+export interface ApiSettlementAuditLog {
+  id: number;
+  settlement_id: number;
+  action: string;
+  actor_type: string;
+  actor_id?: string;
+  amount?: number;
+  previous_status?: string;
+  new_status?: string;
+  message: string;
+  created_at: string;
+}
+
+export interface ApiLedgerEntry {
+  id: number;
+  entry_code: string;
+  settlement_id?: number;
+  escrow_id?: number;
+  task_id?: number;
+  wallet_id: number;
+  entry_type: 'escrow_lock' | 'settlement_debit' | 'settlement_credit';
+  amount: number;
+  balance_type: 'locked' | 'available';
+  description: string;
+  created_at: string;
+}
+
+export interface ApiSettlement {
+  id: number;
+  settlement_code: string;
+  task_id: number;
+  task_code?: string;
+  task_title?: string;
+  escrow_id: number;
+  escrow_code?: string;
+  verification_id?: number;
+  verification_code?: string;
+  requester_wallet_id: number;
+  requester_wallet_code?: string;
+  worker_wallet_id: number;
+  worker_wallet_code?: string;
+  worker_agent_id: number;
+  worker_agent_name?: string;
+  worker_agent_code?: string;
+  amount: number;
+  currency: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'blocked';
+  trigger_type: 'automatic' | 'manual';
+  verification_decision?: string;
+  integrity_verified: boolean;
+  failure_reason?: string;
+  created_at: string;
+  started_at?: string;
+  completed_at?: string;
+  failed_at?: string;
+  updated_at: string;
+}
+
+export interface ApiSettlementSummary {
+  total_settlements: number;
+  completed_settlements: number;
+  blocked_settlements: number;
+  failed_settlements: number;
+  pending_settlements: number;
+  total_ap_settled: number;
+  ap_currently_locked: number;
+  ap_awaiting_resolution: number;
+}
+
+/** GET /api/settlements */
+export async function fetchSettlements(status?: string, taskId?: number): Promise<ApiSettlement[]> {
+  const query = new URLSearchParams();
+  if (status) query.append('status', status);
+  if (taskId) query.append('task_id', taskId.toString());
+  const qs = query.toString() ? `?${query.toString()}` : '';
+  const response = await fetch(`${API_BASE_URL}/api/settlements${qs}`, {
+    headers: { 'Accept': 'application/json' },
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => null);
+    throw new Error(err?.detail || `Failed to fetch settlements: ${response.statusText}`);
+  }
+  return await response.json();
+}
+
+/** GET /api/settlements/{id} */
+export async function fetchSettlement(settlementId: number): Promise<ApiSettlement> {
+  const response = await fetch(`${API_BASE_URL}/api/settlements/${settlementId}`, {
+    headers: { 'Accept': 'application/json' },
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => null);
+    throw new Error(err?.detail || `Failed to fetch settlement: ${response.statusText}`);
+  }
+  return await response.json();
+}
+
+/** GET /api/tasks/{taskId}/settlement */
+export async function fetchTaskSettlement(taskId: number): Promise<ApiSettlement | null> {
+  const response = await fetch(`${API_BASE_URL}/api/tasks/${taskId}/settlement`, {
+    headers: { 'Accept': 'application/json' },
+  });
+  if (response.status === 404) return null;
+  if (!response.ok) {
+    const err = await response.json().catch(() => null);
+    throw new Error(err?.detail || `Failed to fetch task settlement: ${response.statusText}`);
+  }
+  return await response.json();
+}
+
+/** GET /api/escrows/{escrowId}/settlement */
+export async function fetchEscrowSettlement(escrowId: number): Promise<ApiSettlement | null> {
+  const response = await fetch(`${API_BASE_URL}/api/escrows/${escrowId}/settlement`, {
+    headers: { 'Accept': 'application/json' },
+  });
+  if (response.status === 404) return null;
+  if (!response.ok) {
+    const err = await response.json().catch(() => null);
+    throw new Error(err?.detail || `Failed to fetch escrow settlement: ${response.statusText}`);
+  }
+  return await response.json();
+}
+
+/** GET /api/settlements/{id}/audit */
+export async function fetchSettlementAudit(settlementId: number): Promise<ApiSettlementAuditLog[]> {
+  const response = await fetch(`${API_BASE_URL}/api/settlements/${settlementId}/audit`, {
+    headers: { 'Accept': 'application/json' },
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => null);
+    throw new Error(err?.detail || `Failed to fetch settlement audit: ${response.statusText}`);
+  }
+  return await response.json();
+}
+
+/** GET /api/settlements/{id}/ledger */
+export async function fetchSettlementLedger(settlementId: number): Promise<ApiLedgerEntry[]> {
+  const response = await fetch(`${API_BASE_URL}/api/settlements/${settlementId}/ledger`, {
+    headers: { 'Accept': 'application/json' },
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => null);
+    throw new Error(err?.detail || `Failed to fetch settlement ledger: ${response.statusText}`);
+  }
+  return await response.json();
+}
+
+/** GET /api/settlements/summary */
+export async function fetchSettlementSummary(): Promise<ApiSettlementSummary> {
+  const response = await fetch(`${API_BASE_URL}/api/settlements/summary`, {
+    headers: { 'Accept': 'application/json' },
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => null);
+    throw new Error(err?.detail || `Failed to fetch settlement summary: ${response.statusText}`);
+  }
+  return await response.json();
+}
+
+/** POST /api/escrows/{id}/settle — manual trigger */
+export async function settleEscrow(escrowId: number): Promise<ApiSettlement> {
+  const response = await fetch(`${API_BASE_URL}/api/escrows/${escrowId}/settle`, {
+    method: 'POST',
+    headers: { 'Accept': 'application/json' },
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => null);
+    throw new Error(err?.detail || `Failed to execute settlement: ${response.statusText}`);
+  }
+  return await response.json();
+}
+
+/** POST /api/settlements/{id}/retry */
+export async function retrySettlement(settlementId: number): Promise<ApiSettlement> {
+  const response = await fetch(`${API_BASE_URL}/api/settlements/${settlementId}/retry`, {
+    method: 'POST',
+    headers: { 'Accept': 'application/json' },
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => null);
+    throw new Error(err?.detail || `Failed to retry settlement: ${response.statusText}`);
+  }
+  return await response.json();
+}
+
+// ============================================================
+// PHASE 13 — Reputation & Trust Engine Types & API Functions
+// ============================================================
+
+export interface ReputationComponents {
+  quality: number;
+  success_rate: number;
+  reliability: number;
+  consistency: number;
+  experience: number;
+}
+
+export interface ReputationWeights {
+  quality: number;
+  success_rate: number;
+  reliability: number;
+  consistency: number;
+  experience: number;
+}
+
+export interface ReputationBreakdown {
+  agent_id: number;
+  agent_code: string;
+  name: string;
+  agent_type: string;
+  reputation_score: number;
+  reputation_level: string;
+  is_provisional: boolean;
+  components: ReputationComponents;
+  weights: ReputationWeights;
+  total_verified_tasks: number;
+  successful_verified_tasks: number;
+  failed_verified_tasks: number;
+  average_quality_score: number;
+  success_rate: number;
+  calculated_at: string;
+}
+
+export interface ReputationEvent {
+  id: number;
+  event_code: string;
+  agent_id: number;
+  task_id: number | null;
+  verification_id: number | null;
+  settlement_id: number | null;
+  event_type: string;
+  previous_score: number;
+  score_delta: number;
+  new_score: number;
+  quality_score: number | null;
+  verification_decision: string | null;
+  reason: string;
+  details: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface LeaderboardAgent {
+  rank: number;
+  agent_id: number;
+  agent_code: string;
+  name: string;
+  agent_type: string;
+  status: string;
+  is_active: boolean;
+  reputation_score: number;
+  reputation_level: string;
+  is_provisional: boolean;
+  total_verified_tasks: number;
+  successful_verified_tasks: number;
+  success_rate: number;
+  average_quality_score: number;
+}
+
+export interface ReputationSummary {
+  total_agents: number;
+  established_agents: number;
+  provisional_agents: number;
+  excellent_count: number;
+  strong_count: number;
+  good_count: number;
+  moderate_count: number;
+  weak_count: number;
+  high_risk_count: number;
+  average_reputation: number;
+}
+
+/** GET /api/agents/{agent_id}/reputation */
+export async function fetchAgentReputation(agentId: number): Promise<ReputationBreakdown> {
+  const response = await fetch(`${API_BASE_URL}/api/agents/${agentId}/reputation`);
+  if (!response.ok) {
+    const err = await response.json().catch(() => null);
+    throw new Error(err?.detail || `Failed to fetch reputation for agent ${agentId}`);
+  }
+  return await response.json();
+}
+
+/** GET /api/agents/{agent_id}/reputation/history */
+export async function fetchAgentReputationHistory(
+  agentId: number,
+  limit = 50,
+  offset = 0
+): Promise<ReputationEvent[]> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/agents/${agentId}/reputation/history?limit=${limit}&offset=${offset}`
+  );
+  if (!response.ok) {
+    const err = await response.json().catch(() => null);
+    throw new Error(err?.detail || `Failed to fetch reputation history for agent ${agentId}`);
+  }
+  return await response.json();
+}
+
+/** GET /api/reputation/leaderboard */
+export async function fetchReputationLeaderboard(
+  limit = 50,
+  agentType?: string,
+  capability?: string
+): Promise<LeaderboardAgent[]> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (agentType) params.set('agent_type', agentType);
+  if (capability) params.set('capability', capability);
+  const response = await fetch(`${API_BASE_URL}/api/reputation/leaderboard?${params}`);
+  if (!response.ok) {
+    const err = await response.json().catch(() => null);
+    throw new Error(err?.detail || 'Failed to fetch reputation leaderboard');
+  }
+  return await response.json();
+}
+
+/** GET /api/reputation/summary */
+export async function fetchReputationSummary(): Promise<ReputationSummary> {
+  const response = await fetch(`${API_BASE_URL}/api/reputation/summary`);
+  if (!response.ok) {
+    const err = await response.json().catch(() => null);
+    throw new Error(err?.detail || 'Failed to fetch reputation summary');
+  }
+  return await response.json();
+}
+
+/** POST /api/reputation/recalculate-all */
+export async function recalculateAllReputations(): Promise<{ status: string; recalculated_agents: number }> {
+  const response = await fetch(`${API_BASE_URL}/api/reputation/recalculate-all`, {
+    method: 'POST',
+    headers: { 'Accept': 'application/json' },
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => null);
+    throw new Error(err?.detail || 'Failed to recalculate reputations');
+  }
+  return await response.json();
+}
+
 
 
 

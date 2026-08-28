@@ -56,7 +56,7 @@ class ExecutionAgentSummary(BaseModel):
     agent_code: Optional[str]
     name: str
     agent_type: str
-    reputation_score: int
+    reputation_score: float
 
 
 class ExecutionTaskSummary(BaseModel):

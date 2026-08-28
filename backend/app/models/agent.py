@@ -16,14 +16,28 @@ class Agent(Base):
     capabilities = Column(JSON, default=list, nullable=False)
     status = Column(String(50), default="available", nullable=False)
     
-    # Placeholders / default scores
-    reputation_score = Column(Integer, default=80, nullable=False)
+    # Phase 13: Reputation & Trust Engine fields
+    reputation_score = Column(Float, default=80.0, nullable=False)
+    reputation_level = Column(String(50), default="Provisional", nullable=False)
+    is_provisional = Column(Boolean, default=True, nullable=False)
+    
+    total_verified_tasks = Column(Integer, default=0, nullable=False)
+    successful_verified_tasks = Column(Integer, default=0, nullable=False)
+    failed_verified_tasks = Column(Integer, default=0, nullable=False)
+    review_tasks = Column(Integer, default=0, nullable=False)
+    
+    average_quality_score = Column(Float, default=80.0, nullable=False)
+    average_verification_score = Column(Float, default=80.0, nullable=False)  # Legacy alias
+    consistency_score = Column(Float, default=80.0, nullable=False)
+    reliability_score = Column(Float, default=80.0, nullable=False)
+    experience_score = Column(Float, default=50.0, nullable=False)
+    
     wallet_balance = Column(Float, default=0.0, nullable=False) # AP Credits
     tasks_completed = Column(Integer, default=0, nullable=False)
     tasks_failed = Column(Integer, default=0, nullable=False)
     success_rate = Column(Float, default=0.0, nullable=False)
-    average_verification_score = Column(Float, default=0.0, nullable=False)
     
+    reputation_updated_at = Column(DateTime, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -33,6 +47,8 @@ class Agent(Base):
     executions = relationship("TaskExecution", back_populates="agent", cascade="all, delete-orphan",
                               foreign_keys="[TaskExecution.agent_id]")
     submissions = relationship("ResultSubmission", back_populates="agent", foreign_keys="[ResultSubmission.agent_id]")
+    reputation_events = relationship("ReputationEvent", back_populates="agent", cascade="all, delete-orphan",
+                                     foreign_keys="[ReputationEvent.agent_id]")
 
     def __repr__(self) -> str:
         return f"<Agent id={self.id} agent_code={self.agent_code!r} name={self.name!r}>"

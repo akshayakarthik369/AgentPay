@@ -25,6 +25,8 @@ import { APTokenBadge } from './APTokenBadge';
 
 interface ClientDashboardProps {
   onNavigate: (tab: NavTab) => void;
+  onSelectTask?: (taskId: string) => void;
+  onSelectSettlement?: (settlementId: number) => void;
 }
 
 export interface TaskItem {

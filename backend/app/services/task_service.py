@@ -152,8 +152,7 @@ def get_marketplace_stats(db: Session) -> dict:
 
 def get_dashboard_metrics(db: Session) -> dict:
     """
-    Compute real task metrics from the database for the client dashboard.
-    Payment-related fields remain at 0 until Phase 5+.
+    Compute real task and financial metrics from the database for the client dashboard.
     """
     terminal_statuses = {"completed", "failed"}
 
@@ -165,9 +164,29 @@ def get_dashboard_metrics(db: Session) -> dict:
         Task.status == "completed"
     ).count()
 
+    from app.models.wallet import Wallet
+    from app.models.settlement import Settlement
+
+    req_wallet = db.query(Wallet).filter(Wallet.owner_type == "requester").first()
+    available_balance = req_wallet.available_balance if req_wallet else 5000.0
+    locked_balance = req_wallet.locked_balance if req_wallet else 0.0
+    total_spent = req_wallet.total_spent if req_wallet else 0.0
+
+    completed_settlements = db.query(Settlement).filter(Settlement.status == "completed").count()
+    total_ap_settled = (
+        db.query(func.sum(Settlement.amount))
+        .filter(Settlement.status == "completed")
+        .scalar()
+        or 0.0
+    )
+
     return {
         "total_tasks": total_tasks,
         "active_tasks": active_tasks,
         "completed_tasks": completed_tasks,
-        "total_spent": 0,  # Phase 5+: real payment tracking
+        "total_spent": total_spent,
+        "available_balance": available_balance,
+        "locked_balance": locked_balance,
+        "completed_settlements": completed_settlements,
+        "total_ap_settled": float(total_ap_settled),
     }

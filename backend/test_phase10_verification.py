@@ -246,9 +246,9 @@ class TestDecisionPolicies:
         assert data["overall_score"] >= data["required_score"]
         assert data["integrity_valid"] == True
 
-        # Check Task status is verified
+        # Check Task status is verified (or completed if auto-settled in Phase 12)
         task_resp = client.get(f"/api/tasks/{chain['task']['id']}")
-        assert task_resp.json()["status"] == "verified"
+        assert task_resp.json()["status"] in ("verified", "completed")
 
     def test_incomplete_submission_fails(self, client, db):
         """Submission with empty structured output -> FAIL."""

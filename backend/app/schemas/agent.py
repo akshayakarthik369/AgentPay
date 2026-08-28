@@ -112,9 +112,20 @@ class AgentResponse(BaseModel):
     description: Optional[str]
     capabilities: List[str]
     status: str
-    reputation_score: int
+    reputation_score: float
+    reputation_level: Optional[str] = "Provisional"
+    is_provisional: Optional[bool] = True
+    total_verified_tasks: Optional[int] = 0
+    successful_verified_tasks: Optional[int] = 0
+    failed_verified_tasks: Optional[int] = 0
+    review_tasks: Optional[int] = 0
+    average_quality_score: Optional[float] = 80.0
+    consistency_score: Optional[float] = 80.0
+    reliability_score: Optional[float] = 80.0
+    experience_score: Optional[float] = 50.0
     wallet_balance: float
     tasks_completed: int
+    tasks_failed: Optional[int] = 0
     success_rate: float
     average_verification_score: float
     is_active: bool

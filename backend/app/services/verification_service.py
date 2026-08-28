@@ -19,6 +19,8 @@ from app.models.agent import Agent
 from app.services.verifier_selection_service import select_verifier
 from app.services import submission_service
 from app.services import escrow_service
+from app.services import settlement_service
+from app.services import reputation_service
 from app.verification import get_verifier_for_category, VerificationResult
 
 
@@ -276,6 +278,14 @@ def run_verification(db: Session, verification_id: int) -> Verification:
 
         db.commit()
         db.refresh(verification)
+
+        # Phase 13: Trigger reputation penalty for integrity failure
+        try:
+            reputation_service.on_verification_finalized(db, verification.id)
+            db.commit()
+        except Exception as rep_err:
+            print(f"Reputation recalculation note on integrity fail: {rep_err}")
+
         return verification
 
     # ── Step 2: Load Frozen Snapshots ─────────────────────────────────────────
@@ -392,14 +402,31 @@ def run_verification(db: Session, verification_id: int) -> Verification:
         message=f"Verification finalized with status '{verification.status}'.",
     )
 
-    # Phase 11: Update linked Escrow status based on verification decision
+    # Phase 11 & 12: Update linked Escrow status and trigger settlement if PASS
+    escrow = None
     try:
-        escrow_service.update_escrow_from_verification(db, verification.id, result.decision)
+        escrow = escrow_service.update_escrow_from_verification(db, verification.id, result.decision)
     except Exception:
         pass  # Non-blocking; escrow may not exist for legacy tasks
 
     db.commit()
     db.refresh(verification)
+
+    # Phase 12: Automatic Settlement Execution upon PASS
+    if result.decision == "PASS" and escrow and escrow.status == "releasable":
+        try:
+            settlement_service.auto_settle_releasable_escrow(db, escrow.id)
+        except Exception as e:
+            print(f"Auto-settlement trigger note: {e}")
+
+    # Phase 13: Recalculate worker reputation for FAIL or REVIEW decisions
+    if result.decision in ("FAIL", "REVIEW"):
+        try:
+            reputation_service.on_verification_finalized(db, verification.id)
+            db.commit()
+        except Exception as rep_err:
+            print(f"Reputation recalculation note on verification finalize: {rep_err}")
+
     return verification
 
 

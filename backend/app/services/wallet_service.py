@@ -25,7 +25,12 @@ def get_or_create_requester_wallet(db: Session, seed_amount: float = 5000.0) -> 
             updated_at=datetime.utcnow(),
         )
         db.add(wallet)
-        db.commit()
+        db.flush()
+        db.refresh(wallet)
+    elif wallet.available_balance < 1000.0:
+        wallet.available_balance += seed_amount
+        wallet.updated_at = datetime.utcnow()
+        db.flush()
         db.refresh(wallet)
     return wallet
 
@@ -55,7 +60,7 @@ def get_or_create_agent_wallet(db: Session, agent_id: int) -> Wallet:
             updated_at=datetime.utcnow(),
         )
         db.add(wallet)
-        db.commit()
+        db.flush()
         db.refresh(wallet)
     return wallet
 
@@ -140,6 +145,65 @@ def unlock_balance(db: Session, wallet_id: int, amount: float) -> Wallet:
     return wallet
 
 
+def settle_transfer(
+    db: Session, requester_wallet_id: int, worker_wallet_id: int, amount: float
+) -> tuple[Wallet, Wallet]:
+    """
+    Atomically executes the financial transfer for a settlement:
+      - Requester: locked_balance -= amount, total_spent += amount (available_balance unchanged)
+      - Worker: available_balance += amount, total_earned += amount
+    Enforces amount > 0 and requester.locked_balance >= amount.
+    Flushes changes to participate in parent atomic transaction.
+    """
+    if amount <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Settlement transfer amount must be strictly greater than 0 AP Credits.",
+        )
+
+    requester_wallet = (
+        db.query(Wallet).filter(Wallet.id == requester_wallet_id).with_for_update().first()
+    )
+    if not requester_wallet:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Requester wallet with id {requester_wallet_id} not found.",
+        )
+
+    worker_wallet = (
+        db.query(Wallet).filter(Wallet.id == worker_wallet_id).with_for_update().first()
+    )
+    if not worker_wallet:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Worker wallet with id {worker_wallet_id} not found.",
+        )
+
+    if requester_wallet.locked_balance < amount:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Insufficient locked balance for settlement. "
+                f"Required: {amount} AP, Locked: {requester_wallet.locked_balance} AP."
+            ),
+        )
+
+    now = datetime.utcnow()
+
+    # Debit requester's locked balance and increase total_spent
+    requester_wallet.locked_balance -= amount
+    requester_wallet.total_spent += amount
+    requester_wallet.updated_at = now
+
+    # Credit worker's available balance and increase total_earned
+    worker_wallet.available_balance += amount
+    worker_wallet.total_earned += amount
+    worker_wallet.updated_at = now
+
+    db.flush()
+    return requester_wallet, worker_wallet
+
+
 def get_wallet_summary(db: Session, wallet_id: int) -> Dict[str, Any]:
     """Retrieve structured summary of a wallet."""
     wallet = get_wallet(db, wallet_id)
@@ -150,6 +214,7 @@ def get_wallet_summary(db: Session, wallet_id: int) -> Dict[str, Any]:
         )
 
     return {
+        "id": wallet.id,
         "wallet_code": wallet.wallet_code,
         "owner_type": wallet.owner_type,
         "owner_id": wallet.owner_id,

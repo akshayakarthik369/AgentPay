@@ -9,13 +9,17 @@ import {
   fetchTaskExecution,
   fetchTaskSubmission,
   fetchTaskVerification,
+  fetchTaskEscrow,
+  fetchTaskSettlement,
   selectWinningBid, 
   ApiTask, 
   AgentMatchResult, 
   RankedBidItem,
   ApiExecution,
   ApiResultSubmissionDetail,
-  ApiVerificationDetail
+  ApiVerificationDetail,
+  ApiEscrow,
+  ApiSettlement
 } from '../services/api';
 import { TaskStatus } from '../types';
 import { MatchScoreCard, MATCH_LEVEL_STYLES } from '../components/MatchScoreCard';
@@ -45,7 +49,8 @@ import {
   FileText,
   FileCheck,
   Hash,
-  Lock
+  Lock,
+  Coins
 } from 'lucide-react';
 import { Interactive3DCard } from '../components/Interactive3DCard';
 import { DepthIcon } from '../components/DepthIcon';
@@ -60,6 +65,7 @@ interface TaskDetailsPageProps {
   onSelectExecution?: (executionId: number) => void;
   onSelectSubmission?: (submissionId: number) => void;
   onSelectVerification?: (verificationId: number) => void;
+  onSelectSettlement?: (settlementId: number) => void;
 }
 
 export const TaskDetailsPage: React.FC<TaskDetailsPageProps> = ({
@@ -68,11 +74,14 @@ export const TaskDetailsPage: React.FC<TaskDetailsPageProps> = ({
   onSelectExecution,
   onSelectSubmission,
   onSelectVerification,
+  onSelectSettlement,
 }) => {
   const [realTask, setRealTask] = useState<ApiTask | null>(null);
   const [taskExecution, setTaskExecution] = useState<ApiExecution | null>(null);
   const [taskSubmission, setTaskSubmission] = useState<ApiResultSubmissionDetail | null>(null);
   const [taskVerification, setTaskVerification] = useState<ApiVerificationDetail | null>(null);
+  const [taskEscrow, setTaskEscrow] = useState<ApiEscrow | null>(null);
+  const [taskSettlement, setTaskSettlement] = useState<ApiSettlement | null>(null);
   const [matchingAgents, setMatchingAgents] = useState<AgentMatchResult[]>([]);
   const [taskBids, setTaskBids] = useState<RankedBidItem[]>([]);
 
@@ -115,6 +124,15 @@ export const TaskDetailsPage: React.FC<TaskDetailsPageProps> = ({
           fetchTaskExecution(numId)
             .then((exc) => setTaskExecution(exc))
             .catch(() => setTaskExecution(null));
+
+          // Fetch task escrow and settlement
+          fetchTaskEscrow(numId)
+            .then((e) => setTaskEscrow(e))
+            .catch(() => setTaskEscrow(null));
+
+          fetchTaskSettlement(numId)
+            .then((s) => setTaskSettlement(s))
+            .catch(() => setTaskSettlement(null));
 
           // Fetch task submission if submitted
           if (['submitted', 'completed', 'verified', 'failed'].includes(data.status)) {
@@ -427,16 +445,38 @@ export const TaskDetailsPage: React.FC<TaskDetailsPageProps> = ({
                         <span className="font-mono text-[#3155D9] font-bold px-2 py-0.5 rounded bg-cyan-500/20 border border-blue-200">
                           {taskVerification.verification_code || `VR-${1000 + taskVerification.id}`}
                         </span>
-                        <span className="text-emerald-400 font-bold flex items-center gap-1">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span className="text-emerald-700 font-bold flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                           Decision: {taskVerification.decision} ({taskVerification.overall_score.toFixed(1)}%)
                         </span>
+                        {taskSettlement && taskSettlement.status === 'completed' && (
+                          <span className="text-emerald-700 font-bold flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/60">
+                            <Coins className="w-3.5 h-3.5 text-emerald-600" />
+                            Settled: {taskSettlement.amount} AP Released
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3 flex-wrap shrink-0">
+                  {taskSettlement && (
+                    <button
+                      onClick={() => {
+                        if (onSelectSettlement) {
+                          onSelectSettlement(taskSettlement.id);
+                        } else {
+                          onNavigate('settlement-details');
+                        }
+                      }}
+                      className="flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-md transition-all"
+                    >
+                      <Coins className="w-4 h-4" />
+                      <span>View Settlement Proof</span>
+                    </button>
+                  )}
+
                   {taskVerification && (
                     <button
                       onClick={() => {

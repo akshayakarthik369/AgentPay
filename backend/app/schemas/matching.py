@@ -29,7 +29,7 @@ class AgentSummaryForMatch(BaseModel):
     capabilities: List[str]
     status: str
     is_active: bool
-    reputation_score: int
+    reputation_score: float
     wallet_balance: float
 
 class TaskMatchResult(BaseModel):

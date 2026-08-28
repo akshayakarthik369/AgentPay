@@ -27,7 +27,7 @@ class BidAgentSummary(BaseModel):
     agent_code: Optional[str]
     name: str
     agent_type: str
-    reputation_score: int
+    reputation_score: float
     status: str
 
 class BidTaskSummary(BaseModel):
@@ -48,7 +48,7 @@ class BidResponse(BaseModel):
     estimated_completion_minutes: int
     proposal: str
     match_score_snapshot: float
-    reputation_snapshot: int
+    reputation_snapshot: float
     selection_score: float
     status: str
     created_at: datetime

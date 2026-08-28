@@ -3,13 +3,15 @@ import {
   Cpu, ArrowLeft, RefreshCw, AlertCircle,
   CheckCircle2, XCircle, Clock, Star, Wallet,
   Award, ChevronRight, Zap, ShieldCheck, ToggleLeft, ToggleRight,
-  Sparkles, Info, Send, Edit3, Trash2
+  Sparkles, Info, Send, Edit3, Trash2, TrendingUp, TrendingDown, BarChart3
 } from 'lucide-react';
 import { NavTab } from '../components/Navbar';
 import {
   fetchAgentById, fetchDiscoverableTasks, fetchAgentBids,
   activateAgent, deactivateAgent, withdrawBid,
-  ApiAgent, TaskMatchResult, ApiBid, TaskSummaryForMatch
+  fetchAgentReputation, fetchAgentReputationHistory,
+  ApiAgent, TaskMatchResult, ApiBid, TaskSummaryForMatch,
+  ReputationBreakdown, ReputationEvent
 } from '../services/api';
 import { MatchScoreCard, MATCH_LEVEL_STYLES } from '../components/MatchScoreCard';
 import { SubmitBidModal } from '../components/SubmitBidModal';
@@ -71,7 +73,12 @@ export const AgentDetailsPage: React.FC<AgentDetailsPageProps> = ({ agentId, onN
   const [bidsLoading, setBidsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toggling, setToggling] = useState(false);
-  
+
+  // Phase 13: Reputation state
+  const [repBreakdown, setRepBreakdown] = useState<ReputationBreakdown | null>(null);
+  const [repHistory, setRepHistory] = useState<ReputationEvent[]>([]);
+  const [repLoading, setRepLoading] = useState(false);
+
   // Modals state
   const [selectedMatch, setSelectedMatch] = useState<TaskMatchResult | null>(null);
   const [bidModalTask, setBidModalTask] = useState<{ task: TaskSummaryForMatch; matchScore: number } | null>(null);
@@ -95,6 +102,16 @@ export const AgentDetailsPage: React.FC<AgentDetailsPageProps> = ({ agentId, onN
         .then((res) => setBids(res.bids || []))
         .catch(() => {})
         .finally(() => setBidsLoading(false));
+
+      // Phase 13: Load reputation breakdown + history
+      setRepLoading(true);
+      Promise.all([
+        fetchAgentReputation(agentId),
+        fetchAgentReputationHistory(agentId, 20),
+      ])
+        .then(([rb, rh]) => { setRepBreakdown(rb); setRepHistory(rh); })
+        .catch(() => {})
+        .finally(() => setRepLoading(false));
     } catch (e: any) {
       setError(e.message ?? 'Failed to load agent');
     } finally {
@@ -245,10 +262,115 @@ export const AgentDetailsPage: React.FC<AgentDetailsPageProps> = ({ agentId, onN
 
         {/* Stats grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <StatCard label="Reputation" value={agent.reputation_score} icon={<Star className="w-3.5 h-3.5" />} color="text-amber-700" />
+          <StatCard label="Reputation" value={typeof agent.reputation_score === 'number' ? agent.reputation_score.toFixed(1) : agent.reputation_score} icon={<Star className="w-3.5 h-3.5" />} color="text-amber-700" />
           <StatCard label="Tasks Done" value={agent.tasks_completed} icon={<CheckCircle2 className="w-3.5 h-3.5" />} color="text-emerald-700" />
           <StatCard label="Success Rate" value={`${successRate}%`} icon={<Award className="w-3.5 h-3.5" />} color="text-[#1E3A8A]" />
-          <StatCard label="Wallet (APT)" value={agent.wallet_balance.toFixed(2)} icon={<Wallet className="w-3.5 h-3.5" />} color="text-[#3155D9]" />
+          <StatCard label="Wallet (AP)" value={`${agent.wallet_balance.toFixed(1)} AP`} icon={<Wallet className="w-3.5 h-3.5 text-blue-600" />} color="text-[#3155D9]" />
+        </div>
+
+        {/* Phase 13: Reputation Breakdown Panel */}
+        <div className="glass-panel rounded-2xl border border-slate-200 p-6">
+          <div className="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-slate-200">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-amber-500" />
+              <h2 className="font-bold text-[#18202F] text-sm sm:text-base">Reputation Breakdown</h2>
+              {repBreakdown && (
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                  repBreakdown.is_provisional
+                    ? 'bg-amber-50 text-amber-600 border-amber-200'
+                    : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                }`}>
+                  {repBreakdown.is_provisional ? 'Provisional' : 'Established'}
+                </span>
+              )}
+            </div>
+            <span className="text-xs font-mono text-[#596273]">5-Factor Observable Score</span>
+          </div>
+
+          {repLoading ? (
+            <div className="text-center py-6 text-[#87909F] text-xs font-mono">Loading reputation data...</div>
+          ) : repBreakdown ? (
+            <div className="space-y-4">
+              {/* Score + Level */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="flex items-end gap-2">
+                  <span className="text-4xl font-extrabold text-[#18202F] font-mono">{repBreakdown.reputation_score.toFixed(1)}</span>
+                  <span className="text-sm text-[#596273] mb-1">/100</span>
+                </div>
+                <div>
+                  <span className="px-3 py-1 rounded-full text-xs font-bold border bg-amber-50 text-amber-700 border-amber-200">
+                    {repBreakdown.reputation_level}
+                  </span>
+                  <p className="text-xs text-[#596273] mt-1 font-mono">
+                    {repBreakdown.successful_verified_tasks}/{repBreakdown.total_verified_tasks} verified tasks passed
+                  </p>
+                </div>
+              </div>
+
+              {/* 5 factors */}
+              <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
+                {[
+                  { label: 'Quality',      value: repBreakdown.components.quality,      weight: repBreakdown.weights.quality,       color: 'bg-amber-400',   text: 'text-amber-700' },
+                  { label: 'Success Rate', value: repBreakdown.components.success_rate, weight: repBreakdown.weights.success_rate,  color: 'bg-emerald-500', text: 'text-emerald-700' },
+                  { label: 'Reliability',  value: repBreakdown.components.reliability,  weight: repBreakdown.weights.reliability,   color: 'bg-blue-500',    text: 'text-[#3155D9]' },
+                  { label: 'Consistency',  value: repBreakdown.components.consistency,  weight: repBreakdown.weights.consistency,   color: 'bg-purple-500',  text: 'text-[#6D5BD0]' },
+                  { label: 'Experience',   value: repBreakdown.components.experience,   weight: repBreakdown.weights.experience,    color: 'bg-slate-400',   text: 'text-[#596273]' },
+                ].map(({ label, value, weight, color, text }) => (
+                  <div key={label} className="p-3 rounded-xl border border-slate-200 bg-white">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className={`text-xs font-bold ${text}`}>{label}</span>
+                      <span className="text-[10px] font-mono text-[#596273]">{Math.round(weight * 100)}%</span>
+                    </div>
+                    <div className="text-xl font-extrabold text-[#18202F] font-mono">{value.toFixed(1)}</div>
+                    <div className="mt-1.5 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full transition-all duration-500 ${color}`} style={{ width: `${value}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Recent reputation events */}
+              {repHistory.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Sparkles className="w-3.5 h-3.5 text-yellow-400" />
+                    <h3 className="text-xs font-bold text-[#18202F]">Recent Reputation Events</h3>
+                  </div>
+                  <div className="space-y-2">
+                    {repHistory.slice(0, 5).map((evt) => (
+                      <div key={evt.id} className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 bg-white text-xs font-mono">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold shrink-0 ${
+                          evt.score_delta > 0
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            : evt.score_delta < 0
+                            ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                            : 'bg-slate-50 text-[#596273] border border-slate-200'
+                        }`}>
+                          {evt.score_delta > 0 ? <TrendingUp className="w-3.5 h-3.5" /> : evt.score_delta < 0 ? <TrendingDown className="w-3.5 h-3.5" /> : <span>~</span>}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className={`font-bold ${
+                              evt.score_delta > 0 ? 'text-emerald-700' : evt.score_delta < 0 ? 'text-rose-700' : 'text-[#596273]'
+                            }`}>
+                              {evt.score_delta > 0 ? '+' : ''}{evt.score_delta.toFixed(1)}
+                            </span>
+                            <span className="text-[#596273] truncate">{evt.reason}</span>
+                          </div>
+                          <span className="text-[10px] text-[#87909F]">{evt.event_code} · {new Date(evt.created_at).toLocaleDateString()}</span>
+                        </div>
+                        <span className="font-bold text-[#18202F] shrink-0">{evt.new_score.toFixed(1)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-6 text-[#87909F] text-xs font-mono">
+              Reputation data not yet available. Complete verified tasks to generate a score.
+            </div>
+          )}
         </div>
 
         {/* Phase 7: My Submitted Bids */}

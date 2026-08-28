@@ -32,26 +32,33 @@ import { StateBanner } from '../components/StateBanner';
 import {
   fetchVerification,
   fetchVerificationAudit,
+  fetchTaskSettlement,
   runVerification,
   ApiVerificationDetail,
-  ApiVerificationAuditLog
+  ApiVerificationAuditLog,
+  ApiSettlement
 } from '../services/api';
+import { APTokenBadge } from '../components/APTokenBadge';
+import { Coins } from 'lucide-react';
 
 interface VerificationDetailsPageProps {
   verificationId: number;
   onBack: () => void;
   onNavigateToSubmission: (submissionId: number) => void;
   onNavigateToTask: (taskId: number) => void;
+  onNavigateToSettlement?: (settlementId: number) => void;
 }
 
 export const VerificationDetailsPage: React.FC<VerificationDetailsPageProps> = ({
   verificationId,
   onBack,
   onNavigateToSubmission,
-  onNavigateToTask
+  onNavigateToTask,
+  onNavigateToSettlement,
 }) => {
   const [verification, setVerification] = useState<ApiVerificationDetail | null>(null);
   const [auditLogs, setAuditLogs] = useState<ApiVerificationAuditLog[]>([]);
+  const [settlement, setSettlement] = useState<ApiSettlement | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [running, setRunning] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,14 +68,20 @@ export const VerificationDetailsPage: React.FC<VerificationDetailsPageProps> = (
     try {
       setLoading(true);
       setError(null);
-      const [verifData, auditData] = await Promise.all([
+      const [vData, aData] = await Promise.all([
         fetchVerification(verificationId),
-        fetchVerificationAudit(verificationId).catch(() => [])
+        fetchVerificationAudit(verificationId).catch(() => []),
       ]);
-      setVerification(verifData);
-      setAuditLogs(auditData);
+      setVerification(vData);
+      setAuditLogs(aData);
+
+      if (vData?.task_id) {
+        fetchTaskSettlement(vData.task_id)
+          .then((s) => setSettlement(s))
+          .catch(() => setSettlement(null));
+      }
     } catch (err: any) {
-      setError(err.message || 'Failed to load verification details');
+      setError(err.message || 'Failed to load verification record');
     } finally {
       setLoading(false);
     }
@@ -270,7 +283,7 @@ export const VerificationDetailsPage: React.FC<VerificationDetailsPageProps> = (
         }
         nextAction={
           verification.decision === 'PASS'
-            ? 'Settlement (Next Phase)'
+            ? 'Automatic Settlement Completed'
             : verification.decision === 'FAIL'
             ? 'Dispute Resolution & Arbitration (Upcoming)'
             : 'Run 5-Criteria Audit Engine'
@@ -293,6 +306,41 @@ export const VerificationDetailsPage: React.FC<VerificationDetailsPageProps> = (
             : undefined
         }
       />
+
+      {/* Phase 12 Settlement Success Banner */}
+      {settlement && settlement.status === 'completed' && (
+        <div className="p-5 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border border-emerald-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-100/80 text-emerald-700 flex items-center justify-center shrink-0 border border-emerald-300/60">
+              <Coins className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-emerald-800">
+                  Conditional Settlement Completed
+                </span>
+                <span className="text-[11px] font-mono font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded">
+                  {settlement.settlement_code}
+                </span>
+              </div>
+              <p className="text-xs text-slate-700 mt-0.5">
+                <strong>{settlement.amount} AP</strong> automatically transferred from escrow to{' '}
+                <strong className="text-slate-900">{settlement.worker_agent_name || `Agent #${settlement.worker_agent_id}`}</strong>.
+              </p>
+            </div>
+          </div>
+
+          {onNavigateToSettlement && (
+            <button
+              onClick={() => onNavigateToSettlement(settlement.id)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition-all shadow-xs cursor-pointer shrink-0"
+            >
+              <span>View Settlement Proof</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Top Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

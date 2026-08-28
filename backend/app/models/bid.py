@@ -17,7 +17,7 @@ class Bid(Base):
     proposal = Column(Text, nullable=False)
     
     match_score_snapshot = Column(Float, nullable=False)
-    reputation_snapshot = Column(Integer, nullable=False)
+    reputation_snapshot = Column(Float, nullable=False)
     selection_score = Column(Float, default=0.0, nullable=False)
     
     status = Column(String(50), default="pending", nullable=False) # pending, accepted, rejected, withdrawn

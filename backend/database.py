@@ -56,6 +56,28 @@ def run_migrations():
             if existing_columns:
                 if "tasks_failed" not in existing_columns:
                     conn.execute(text("ALTER TABLE agents ADD COLUMN tasks_failed INTEGER DEFAULT 0"))
+                if "reputation_level" not in existing_columns:
+                    conn.execute(text("ALTER TABLE agents ADD COLUMN reputation_level VARCHAR(50) DEFAULT 'Provisional'"))
+                if "is_provisional" not in existing_columns:
+                    conn.execute(text("ALTER TABLE agents ADD COLUMN is_provisional BOOLEAN DEFAULT 1"))
+                if "total_verified_tasks" not in existing_columns:
+                    conn.execute(text("ALTER TABLE agents ADD COLUMN total_verified_tasks INTEGER DEFAULT 0"))
+                if "successful_verified_tasks" not in existing_columns:
+                    conn.execute(text("ALTER TABLE agents ADD COLUMN successful_verified_tasks INTEGER DEFAULT 0"))
+                if "failed_verified_tasks" not in existing_columns:
+                    conn.execute(text("ALTER TABLE agents ADD COLUMN failed_verified_tasks INTEGER DEFAULT 0"))
+                if "review_tasks" not in existing_columns:
+                    conn.execute(text("ALTER TABLE agents ADD COLUMN review_tasks INTEGER DEFAULT 0"))
+                if "average_quality_score" not in existing_columns:
+                    conn.execute(text("ALTER TABLE agents ADD COLUMN average_quality_score FLOAT DEFAULT 80.0"))
+                if "consistency_score" not in existing_columns:
+                    conn.execute(text("ALTER TABLE agents ADD COLUMN consistency_score FLOAT DEFAULT 80.0"))
+                if "reliability_score" not in existing_columns:
+                    conn.execute(text("ALTER TABLE agents ADD COLUMN reliability_score FLOAT DEFAULT 80.0"))
+                if "experience_score" not in existing_columns:
+                    conn.execute(text("ALTER TABLE agents ADD COLUMN experience_score FLOAT DEFAULT 50.0"))
+                if "reputation_updated_at" not in existing_columns:
+                    conn.execute(text("ALTER TABLE agents ADD COLUMN reputation_updated_at DATETIME"))
                 conn.commit()
         except Exception as e:
             print(f"Migration note (agents): {e}")
