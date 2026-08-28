@@ -1994,3 +1994,98 @@ export async function fetchDisputeAudit(id: number): Promise<DisputeAuditLog[]> 
   }
   return res.json();
 }
+
+// ─────────────────────────────────────────────────────────────
+// Phase 16 — AI Arbitration System
+// ─────────────────────────────────────────────────────────────
+
+export interface ArbitrationAuditLog {
+  id: number;
+  arbitration_id: number;
+  action: string;
+  actor_type: string;
+  actor_id: string | null;
+  message: string | null;
+  created_at: string;
+}
+
+export interface Arbitration {
+  id: number;
+  arbitration_code: string | null;
+  dispute_id: number;
+  task_id: number;
+  arbitrator_agent_id: number;
+  worker_agent_id: number;
+  verification_id: number | null;
+  review_id: number | null;
+  escrow_id: number;
+  status: string; // pending, running, resolved, failed
+  decision: string | null; // worker_wins, requester_wins, inconclusive
+  confidence_score: number;
+  reasoning_summary: string | null;
+  analysis_details: string | null;
+  created_at: string;
+  started_at: string | null;
+  resolved_at: string | null;
+  audit_logs?: ArbitrationAuditLog[];
+}
+
+export interface ArbitrationTriggerPayload {
+  force_decision?: string;
+  notes?: string;
+}
+
+/** POST /api/disputes/:id/arbitrate */
+export async function triggerArbitration(disputeId: number, payload?: ArbitrationTriggerPayload): Promise<Arbitration> {
+  const res = await fetch(`${API_BASE_URL}/api/disputes/${disputeId}/arbitrate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: payload ? JSON.stringify(payload) : JSON.stringify({}),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || 'Failed to execute arbitration');
+  }
+  return res.json();
+}
+
+/** GET /api/arbitrations */
+export async function fetchArbitrations(statusFilter?: string): Promise<Arbitration[]> {
+  const query = statusFilter && statusFilter !== 'all' ? `?status=${statusFilter}` : '';
+  const res = await fetch(`${API_BASE_URL}/api/arbitrations${query}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || 'Failed to fetch arbitrations');
+  }
+  return res.json();
+}
+
+/** GET /api/arbitrations/:id */
+export async function fetchArbitration(id: number): Promise<Arbitration> {
+  const res = await fetch(`${API_BASE_URL}/api/arbitrations/${id}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || 'Failed to fetch arbitration');
+  }
+  return res.json();
+}
+
+/** GET /api/disputes/:disputeId/arbitration */
+export async function fetchArbitrationByDispute(disputeId: number): Promise<Arbitration> {
+  const res = await fetch(`${API_BASE_URL}/api/disputes/${disputeId}/arbitration`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || 'No arbitration found for this dispute');
+  }
+  return res.json();
+}
+
+/** GET /api/arbitrations/:id/audit */
+export async function fetchArbitrationAudit(id: number): Promise<ArbitrationAuditLog[]> {
+  const res = await fetch(`${API_BASE_URL}/api/arbitrations/${id}/audit`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || 'Failed to fetch arbitration audit logs');
+  }
+  return res.json();
+}

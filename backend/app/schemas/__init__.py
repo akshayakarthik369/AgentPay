@@ -42,3 +42,8 @@ from .dispute import (
     DisputeAuditLogResponse,
     DisputeResponse,
 )
+from .arbitration import (
+    ArbitrationAuditLogResponse,
+    ArbitrationTriggerPayload,
+    ArbitrationResponse,
+)

@@ -4,7 +4,8 @@ import {
   ChevronRight, User, Shield, FileText, Hash,
   Activity, Filter, Eye, Play, Check, X, ClipboardList,
   AlertTriangle, PlusCircle, ShieldAlert, FilePlus2, Send,
-  Lock, ArrowRight, CornerDownRight, CheckSquare, Sparkles, Scale
+  Lock, ArrowRight, CornerDownRight, CheckSquare, Sparkles, Scale,
+  Bot, Award, Zap, ChevronDown
 } from 'lucide-react';
 import {
   HumanReview, HumanReviewAuditLog,
@@ -12,7 +13,9 @@ import {
   startHumanReview, resolveHumanReview,
   Dispute, DisputeEvidence, DisputeAuditLog,
   fetchDisputes, fetchDispute, fetchDisputeAudit, fetchDisputeEvidence,
-  createDispute, addDisputeEvidence, markDisputeReady, cancelDispute
+  createDispute, addDisputeEvidence, markDisputeReady, cancelDispute,
+  Arbitration, ArbitrationAuditLog,
+  triggerArbitration, fetchArbitrationByDispute, fetchArbitrationAudit
 } from '../services/api';
 import { NavTab } from '../components/Navbar';
 
@@ -62,7 +65,7 @@ function StatusPill({ status, type = 'hr' }: { status: string; type?: 'hr' | 'dp
 export function DisputesPage({ onNavigate }: DisputesPageProps) {
   const [activeSubTab, setActiveSubTab] = useState<'disputes' | 'human_review'>('disputes');
 
-  // ── Phase 15 Dispute Center State ──────────────────────────────────────────
+  // ── Phase 15 & 16 Dispute & Arbitration State ──────────────────────────────
   const [disputes, setDisputes] = useState<Dispute[]>([]);
   const [dpStatusFilter, setDpStatusFilter] = useState('all');
   const [dpLoading, setDpLoading] = useState(true);
@@ -71,6 +74,8 @@ export function DisputesPage({ onNavigate }: DisputesPageProps) {
   const [selectedDispute, setSelectedDispute] = useState<Dispute | null>(null);
   const [disputeEvidence, setDisputeEvidence] = useState<DisputeEvidence[]>([]);
   const [disputeAudit, setDisputeAudit] = useState<DisputeAuditLog[]>([]);
+  const [selectedArbitration, setSelectedArbitration] = useState<Arbitration | null>(null);
+  const [arbAuditLogs, setArbAuditLogs] = useState<ArbitrationAuditLog[]>([]);
   const [dpDetailLoading, setDpDetailLoading] = useState(false);
 
   // Modals & Action Forms
@@ -89,6 +94,11 @@ export function DisputesPage({ onNavigate }: DisputesPageProps) {
   const [newEvidenceData, setNewEvidenceData] = useState('');
   const [evidenceLoading, setEvidenceLoading] = useState(false);
   const [evidenceError, setEvidenceError] = useState<string | null>(null);
+
+  const [showArbitrateModal, setShowArbitrateModal] = useState(false);
+  const [forceDecision, setForceDecision] = useState<string>('');
+  const [arbitrateNotes, setArbitrateNotes] = useState('');
+  const [arbLoading, setArbLoading] = useState(false);
 
   const [dpActionLoading, setDpActionLoading] = useState(false);
   const [dpActionMsg, setDpActionMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -146,12 +156,21 @@ export function DisputesPage({ onNavigate }: DisputesPageProps) {
     setDpActionMsg(null);
     setDpDetailLoading(true);
     try {
-      const [evList, audList] = await Promise.all([
+      const [evList, audList, arb] = await Promise.all([
         fetchDisputeEvidence(disp.id).catch(() => []),
-        fetchDisputeAudit(disp.id).catch(() => [])
+        fetchDisputeAudit(disp.id).catch(() => []),
+        fetchArbitrationByDispute(disp.id).catch(() => null)
       ]);
       setDisputeEvidence(evList);
       setDisputeAudit(audList);
+      setSelectedArbitration(arb);
+
+      if (arb) {
+        const arbAud = await fetchArbitrationAudit(arb.id).catch(() => []);
+        setArbAuditLogs(arbAud);
+      } else {
+        setArbAuditLogs([]);
+      }
     } finally {
       setDpDetailLoading(false);
     }
@@ -162,12 +181,21 @@ export function DisputesPage({ onNavigate }: DisputesPageProps) {
       const fresh = await fetchDispute(id);
       setSelectedDispute(fresh);
       setDisputes(prev => prev.map(d => d.id === id ? fresh : d));
-      const [evList, audList] = await Promise.all([
+      const [evList, audList, arb] = await Promise.all([
         fetchDisputeEvidence(id).catch(() => []),
-        fetchDisputeAudit(id).catch(() => [])
+        fetchDisputeAudit(id).catch(() => []),
+        fetchArbitrationByDispute(id).catch(() => null)
       ]);
       setDisputeEvidence(evList);
       setDisputeAudit(audList);
+      setSelectedArbitration(arb);
+
+      if (arb) {
+        const arbAud = await fetchArbitrationAudit(arb.id).catch(() => []);
+        setArbAuditLogs(arbAud);
+      } else {
+        setArbAuditLogs([]);
+      }
     } catch { /* silent */ }
   };
 
@@ -241,6 +269,31 @@ export function DisputesPage({ onNavigate }: DisputesPageProps) {
       setDpActionMsg({ type: 'error', text: err instanceof Error ? err.message : 'Failed to update dispute' });
     } finally {
       setDpActionLoading(false);
+    }
+  };
+
+  const handleTriggerArb = async () => {
+    if (!selectedDispute) return;
+    setArbLoading(true);
+    setDpActionMsg(null);
+    try {
+      const arbResult = await triggerArbitration(selectedDispute.id, {
+        force_decision: forceDecision || undefined,
+        notes: arbitrateNotes.trim() || undefined,
+      });
+      setShowArbitrateModal(false);
+      setForceDecision('');
+      setArbitrateNotes('');
+      setDpActionMsg({
+        type: 'success',
+        text: `Arbitration resolved: ${arbResult.decision?.toUpperCase()} (${arbResult.confidence_score.toFixed(1)}% Confidence).`
+      });
+      await refreshSelectedDispute(selectedDispute.id);
+      loadDisputes();
+    } catch (err: unknown) {
+      setDpActionMsg({ type: 'error', text: err instanceof Error ? err.message : 'Arbitration failed' });
+    } finally {
+      setArbLoading(false);
     }
   };
 
@@ -324,6 +377,7 @@ export function DisputesPage({ onNavigate }: DisputesPageProps) {
   const canMarkReady = selectedDispute && ['open', 'evidence_pending'].includes(selectedDispute.status);
   const canAddEvidence = selectedDispute && ['open', 'evidence_pending', 'ready_for_arbitration'].includes(selectedDispute.status);
   const canCancelDispute = selectedDispute && isDisputeActive;
+  const canTriggerArbitration = selectedDispute && ['ready_for_arbitration', 'open', 'under_arbitration'].includes(selectedDispute.status) && (!selectedArbitration || selectedArbitration.status !== 'resolved');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100/60 to-slate-200/50 px-4 py-8">
@@ -337,8 +391,8 @@ export function DisputesPage({ onNavigate }: DisputesPageProps) {
                 <Scale className="w-6 h-6 text-indigo-700" />
               </div>
               <div>
-                <h1 className="text-2xl font-black text-slate-900 tracking-tight">Dispute & Resolution Center</h1>
-                <p className="text-xs text-slate-500">Autonomous economic arbitration and human-in-the-loop review</p>
+                <h1 className="text-2xl font-black text-slate-900 tracking-tight">Dispute & AI Arbitration Center</h1>
+                <p className="text-xs text-slate-500">Autonomous economic arbitration, frozen evidence review, and HITL governance</p>
               </div>
             </div>
           </div>
@@ -353,8 +407,8 @@ export function DisputesPage({ onNavigate }: DisputesPageProps) {
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
             >
-              <ShieldAlert className="w-4 h-4" />
-              <span>Dispute Center (Phase 15)</span>
+              <Scale className="w-4 h-4" />
+              <span>Disputes & AI Arbitration (Phase 15 & 16)</span>
             </button>
             <button
               onClick={() => setActiveSubTab('human_review')}
@@ -371,31 +425,43 @@ export function DisputesPage({ onNavigate }: DisputesPageProps) {
         </div>
 
         {/* ══════════════════════════════════════════════════════════════════════
-            TAB 1: PHASE 15 DISPUTE RESOLUTION CENTER
+            TAB 1: PHASE 15 & 16 DISPUTE & AI ARBITRATION CENTER
         ══════════════════════════════════════════════════════════════════════ */}
         {activeSubTab === 'disputes' && (
           <div>
-            {/* Quick Action Banner */}
-            <div className="mb-4 flex items-center justify-between bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/5 border border-amber-300 rounded-2xl p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-amber-500 text-white shadow-sm">
-                  <AlertTriangle className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-amber-950">Outcome Disagreement or Inaccurate Verification?</h4>
-                  <p className="text-xs text-amber-800/80">Raising a dispute pauses settlement and prepares the case for Phase 16 AI arbitration.</p>
-                </div>
+            {/* Visual Process Pipeline */}
+            <div className="mb-4 bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-700 flex-wrap">
+                <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-900">
+                  <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
+                  1. Dispute Raised
+                </span>
+                <ArrowRight className="w-3.5 h-3.5 text-slate-300 hidden sm:block" />
+                <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-purple-50 border border-purple-200 text-purple-900">
+                  <Bot className="w-3.5 h-3.5 text-purple-600" />
+                  2. Independent Arbitrator Selected
+                </span>
+                <ArrowRight className="w-3.5 h-3.5 text-slate-300 hidden sm:block" />
+                <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-900">
+                  <FileText className="w-3.5 h-3.5 text-blue-600" />
+                  3. Evidence Evaluated
+                </span>
+                <ArrowRight className="w-3.5 h-3.5 text-slate-300 hidden sm:block" />
+                <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900">
+                  <Award className="w-3.5 h-3.5 text-emerald-600" />
+                  4. Final Ruling & Settlement
+                </span>
               </div>
               <button
                 onClick={() => setShowRaiseModal(true)}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-md transition"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow transition shrink-0"
               >
                 <PlusCircle className="w-4 h-4" />
-                <span>Raise New Dispute</span>
+                <span>Raise Dispute</span>
               </button>
             </div>
 
-            {/* Main Dispute Split View */}
+            {/* Main Split View */}
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-[calc(100vh-250px)]">
 
               {/* ── LEFT: Dispute Queue ── */}
@@ -442,7 +508,7 @@ export function DisputesPage({ onNavigate }: DisputesPageProps) {
                   )}
                   {!dpLoading && !dpError && disputes.length === 0 && (
                     <div className="p-8 text-center">
-                      <ShieldAlert className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                      <Scale className="w-10 h-10 text-slate-300 mx-auto mb-3" />
                       <p className="text-sm text-slate-500 font-medium">No disputes active</p>
                       <p className="text-xs text-slate-400 mt-1">Disputed failed tasks will be listed here</p>
                     </div>
@@ -476,7 +542,7 @@ export function DisputesPage({ onNavigate }: DisputesPageProps) {
                 </div>
               </div>
 
-              {/* ── RIGHT: Dispute Dossier & Evidence ── */}
+              {/* ── RIGHT: Dispute & Arbitration Dossier ── */}
               <div className="lg:col-span-3 flex flex-col bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                 {!selectedDispute ? (
                   <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
@@ -484,7 +550,7 @@ export function DisputesPage({ onNavigate }: DisputesPageProps) {
                       <Scale className="w-10 h-10 text-amber-500" />
                     </div>
                     <p className="text-base font-semibold text-slate-700 mb-1">Select a dispute case</p>
-                    <p className="text-sm text-slate-400">Click any dispute on the left to inspect evidence, submit additions, and prepare for arbitration.</p>
+                    <p className="text-sm text-slate-400">Click any dispute on the left to inspect evidence, run AI arbitration, and view rulings.</p>
                   </div>
                 ) : (
                   <>
@@ -492,7 +558,7 @@ export function DisputesPage({ onNavigate }: DisputesPageProps) {
                     <div className="px-6 py-3.5 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="p-2 rounded-lg bg-amber-100">
-                          <ShieldAlert className="w-4 h-4 text-amber-700" />
+                          <Scale className="w-4 h-4 text-amber-700" />
                         </div>
                         <div>
                           <p className="text-sm font-black text-slate-900 font-mono">{selectedDispute.dispute_code ?? `DP-${1000 + selectedDispute.id}`}</p>
@@ -518,7 +584,7 @@ export function DisputesPage({ onNavigate }: DisputesPageProps) {
                           <div>
                             <p className="text-xs font-black uppercase tracking-wider text-amber-900">Settlement Paused — Dispute Active</p>
                             <p className="text-xs text-amber-800 mt-0.5 leading-relaxed">
-                              AP Credit settlement is strictly frozen in escrow. No funds will be transferred until Phase 16 AI arbitration evaluates this case.
+                              AP Credit settlement is strictly frozen in escrow pending Phase 16 AI arbitration review.
                             </p>
                           </div>
                         </div>
@@ -530,6 +596,67 @@ export function DisputesPage({ onNavigate }: DisputesPageProps) {
                         }`}>
                           {dpActionMsg.type === 'success' ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />}
                           <span>{dpActionMsg.text}</span>
+                        </div>
+                      )}
+
+                      {/* ── PHASE 16: AI ARBITRATION DECISION CARD ── */}
+                      {selectedArbitration && selectedArbitration.status === 'resolved' && (
+                        <div className={`rounded-2xl border p-5 shadow-sm space-y-4 ${
+                          selectedArbitration.decision === 'worker_wins'
+                            ? 'bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-transparent border-emerald-300'
+                            : selectedArbitration.decision === 'requester_wins'
+                            ? 'bg-gradient-to-br from-rose-500/10 via-amber-500/5 to-transparent border-rose-300'
+                            : 'bg-gradient-to-br from-amber-500/10 via-yellow-500/5 to-transparent border-amber-300'
+                        }`}>
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                              <div className={`p-3 rounded-xl ${
+                                selectedArbitration.decision === 'worker_wins' ? 'bg-emerald-600 text-white' : (selectedArbitration.decision === 'requester_wins' ? 'bg-rose-600 text-white' : 'bg-amber-600 text-white')
+                              }`}>
+                                <Gavel className="w-6 h-6" />
+                              </div>
+                              <div>
+                                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500">
+                                  Arbitration Ruling #{selectedArbitration.arbitration_code ?? `AR-${selectedArbitration.id}`}
+                                </span>
+                                <h3 className="text-lg font-black tracking-tight uppercase">
+                                  {selectedArbitration.decision === 'worker_wins' && <span className="text-emerald-700">Ruling: Worker Wins (Dispute Upheld)</span>}
+                                  {selectedArbitration.decision === 'requester_wins' && <span className="text-rose-700">Ruling: Requester Wins (Failure Upheld)</span>}
+                                  {selectedArbitration.decision === 'inconclusive' && <span className="text-amber-700">Ruling: Inconclusive (Manual Attention)</span>}
+                                </h3>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white border border-slate-200 text-xs font-bold text-slate-800 shadow-sm">
+                                <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                                {selectedArbitration.confidence_score.toFixed(1)}% Confidence
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="bg-white/80 rounded-xl p-3.5 border border-slate-200 space-y-2">
+                            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Arbitrator Reasoning & Analysis</p>
+                            <p className="text-xs text-slate-800 leading-relaxed font-medium">{selectedArbitration.reasoning_summary}</p>
+                          </div>
+
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                            <div className="bg-white/90 p-2.5 rounded-lg border border-slate-200">
+                              <span className="text-[10px] text-slate-400 block">Arbitrator Agent</span>
+                              <strong className="text-slate-800 font-mono">Agent #{selectedArbitration.arbitrator_agent_id}</strong>
+                            </div>
+                            <div className="bg-white/90 p-2.5 rounded-lg border border-slate-200">
+                              <span className="text-[10px] text-slate-400 block">Escrow Execution</span>
+                              <strong className={selectedArbitration.decision === 'worker_wins' ? 'text-emerald-700' : 'text-rose-700'}>
+                                {selectedArbitration.decision === 'worker_wins' ? 'Releasable / Settled' : 'Blocked (0 AP)'}
+                              </strong>
+                            </div>
+                            <div className="bg-white/90 p-2.5 rounded-lg border border-slate-200">
+                              <span className="text-[10px] text-slate-400 block">Resolved At</span>
+                              <strong className="text-slate-800 font-mono text-[10px]">
+                                {selectedArbitration.resolved_at ? new Date(selectedArbitration.resolved_at).toLocaleString() : 'N/A'}
+                              </strong>
+                            </div>
+                          </div>
                         </div>
                       )}
 
@@ -551,13 +678,13 @@ export function DisputesPage({ onNavigate }: DisputesPageProps) {
                         ))}
                       </div>
 
-                      {/* Dispute Explanation */}
+                      {/* Dispute Statement */}
                       <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
                         <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Dispute Statement</p>
                         <p className="text-sm text-slate-800 leading-relaxed">{selectedDispute.description}</p>
                       </div>
 
-                      {/* ── Evidence Section (Immutable items) ── */}
+                      {/* ── Evidence Section ── */}
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
                           <p className="text-sm font-bold text-slate-800 flex items-center gap-2">
@@ -577,7 +704,7 @@ export function DisputesPage({ onNavigate }: DisputesPageProps) {
 
                         {disputeEvidence.length === 0 ? (
                           <p className="text-xs text-slate-400 italic p-3 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center">
-                            No additional evidence attached yet.
+                            No supplementary evidence attached yet.
                           </p>
                         ) : (
                           <div className="space-y-2.5">
@@ -599,17 +726,27 @@ export function DisputesPage({ onNavigate }: DisputesPageProps) {
                         )}
                       </div>
 
-                      {/* ── Action Controls ── */}
+                      {/* ── Action Controls & Trigger AI Arbitration ── */}
                       {isDisputeActive && (
                         <div className="flex flex-wrap gap-3 pt-2 border-t border-slate-100">
+                          {canTriggerArbitration && (
+                            <button
+                              onClick={() => setShowArbitrateModal(true)}
+                              disabled={dpActionLoading || arbLoading}
+                              className="flex-1 flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-black shadow-lg transition disabled:opacity-50 animate-pulse"
+                            >
+                              <Gavel className="w-4 h-4" />
+                              <span>Launch AI Arbitration Engine (Phase 16)</span>
+                            </button>
+                          )}
                           {canMarkReady && (
                             <button
                               onClick={handleMarkReady}
                               disabled={dpActionLoading}
-                              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow transition disabled:opacity-50"
+                              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold border border-indigo-200 transition disabled:opacity-50"
                             >
                               <Sparkles className="w-4 h-4" />
-                              <span>Mark Ready for Arbitration</span>
+                              <span>Mark Ready</span>
                             </button>
                           )}
                           {canCancelDispute && (
@@ -619,17 +756,37 @@ export function DisputesPage({ onNavigate }: DisputesPageProps) {
                               className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold border border-slate-200 transition disabled:opacity-50"
                             >
                               <X className="w-4 h-4" />
-                              <span>Withdraw Dispute</span>
+                              <span>Withdraw</span>
                             </button>
                           )}
                         </div>
                       )}
 
-                      {/* ── Audit Timeline ── */}
+                      {/* ── Arbitration Audit Timeline ── */}
+                      {arbAuditLogs.length > 0 && (
+                        <div className="space-y-3 pt-2 border-t border-slate-100">
+                          <p className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                            <Bot className="w-4 h-4 text-purple-600" />
+                            <span>AI Arbitration Audit Trail</span>
+                          </p>
+                          <ol className="relative border-l border-purple-200 ml-2 space-y-3">
+                            {arbAuditLogs.map((log) => (
+                              <li key={log.id} className="ml-4">
+                                <div className="absolute -left-1.5 w-3 h-3 rounded-full bg-purple-600 border-2 border-white mt-0.5" />
+                                <p className="text-[10px] text-slate-400 font-mono">{new Date(log.created_at).toLocaleString()}</p>
+                                <p className="text-xs font-semibold text-purple-900 capitalize mt-0.5">{log.action.replace(/_/g, ' ')}</p>
+                                {log.message && <p className="text-xs text-slate-600 mt-0.5">{log.message}</p>}
+                              </li>
+                            ))}
+                          </ol>
+                        </div>
+                      )}
+
+                      {/* ── Dispute Audit Timeline ── */}
                       <div className="space-y-3 pt-2 border-t border-slate-100">
                         <p className="text-sm font-bold text-slate-800 flex items-center gap-2">
                           <ClipboardList className="w-4 h-4 text-slate-500" />
-                          <span>Dispute Audit History</span>
+                          <span>Dispute History Logs</span>
                         </p>
                         <ol className="relative border-l border-slate-200 ml-2 space-y-3">
                           {disputeAudit.map((log) => (
@@ -983,6 +1140,72 @@ export function DisputesPage({ onNavigate }: DisputesPageProps) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: Trigger AI Arbitration (Phase 16) ── */}
+      {showArbitrateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Gavel className="w-5 h-5 text-purple-600" />
+                <span>Launch Autonomous AI Arbitration</span>
+              </h3>
+              <button onClick={() => setShowArbitrateModal(false)} className="p-1 rounded-lg hover:bg-slate-100 text-slate-400">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              An independent AI Arbitrator agent will be appointed to review frozen evidence, calculate confidence metrics, and issue an enforceable ruling.
+            </p>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Arbitration Mode / Override (Optional)</label>
+                <select
+                  value={forceDecision}
+                  onChange={e => setForceDecision(e.target.value)}
+                  className="w-full text-xs border border-slate-200 rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-purple-400"
+                >
+                  <option value="">Autonomous Evidence-Based Evaluation</option>
+                  <option value="worker_wins">Force Worker Wins (Approve & Settle)</option>
+                  <option value="requester_wins">Force Requester Wins (Block & Fail)</option>
+                  <option value="inconclusive">Force Inconclusive (Manual Hold)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Arbitration Context Notes (Optional)</label>
+                <textarea
+                  value={arbitrateNotes}
+                  onChange={e => setArbitrateNotes(e.target.value)}
+                  rows={2}
+                  placeholder="Optional instruction or specific context for the arbitrator agent..."
+                  className="w-full text-xs border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowArbitrateModal(false)}
+                className="flex-1 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleTriggerArb}
+                disabled={arbLoading}
+                className="flex-1 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow disabled:opacity-50"
+              >
+                {arbLoading ? 'Arbitrating...' : 'Execute Arbitration'}
+              </button>
+            </div>
           </div>
         </div>
       )}
