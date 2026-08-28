@@ -59,6 +59,7 @@ build/
 .vite/
 *.egg-info/
 *.egg
+vite.config.ts.timestamp*
 
 # ----------------------------------------------------------------
 # IDE & OS artefacts
