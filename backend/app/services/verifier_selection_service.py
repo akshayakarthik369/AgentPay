@@ -101,10 +101,13 @@ def select_verifier(db: Session, submission: ResultSubmission) -> Optional[Agent
         except Exception:
             pass
 
-    # Query all active verifier candidates (excluding the worker)
+    # Query all active, non-suspended verifier candidates (excluding the worker)
     candidates = db.query(Agent).filter(
         Agent.agent_type == "verifier",
         Agent.is_active == True,
+        Agent.is_suspended == False,
+        Agent.status != "suspended",
+        Agent.risk_score < 80.0,
         Agent.id != worker_id,
     ).all()
 

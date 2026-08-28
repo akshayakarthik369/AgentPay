@@ -40,6 +40,13 @@ class Agent(Base):
     reputation_updated_at = Column(DateTime, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     
+    # Phase 18: Security & Trust Layer fields
+    risk_score = Column(Float, default=0.0, nullable=False)  # 0.0 – 100.0
+    violation_count = Column(Integer, default=0, nullable=False)
+    is_suspended = Column(Boolean, default=False, nullable=False)
+    suspension_reason = Column(Text, nullable=True)
+    last_violation_at = Column(DateTime, nullable=True)
+    
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 

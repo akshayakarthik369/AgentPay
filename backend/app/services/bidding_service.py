@@ -100,6 +100,9 @@ def create_bid(db: Session, payload: BidCreate) -> Bid:
             detail=f"Agent with id {payload.agent_id} not found",
         )
 
+    from app.services import security_service
+    security_service.check_agent_eligibility(agent, "submit bids")
+
     if not agent.is_active:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

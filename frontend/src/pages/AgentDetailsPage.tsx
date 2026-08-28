@@ -3,7 +3,8 @@ import {
   Cpu, ArrowLeft, RefreshCw, AlertCircle,
   CheckCircle2, XCircle, Clock, Star, Wallet,
   Award, ChevronRight, Zap, ShieldCheck, ToggleLeft, ToggleRight,
-  Sparkles, Info, Send, Edit3, Trash2, TrendingUp, TrendingDown, BarChart3
+  Sparkles, Info, Send, Edit3, Trash2, TrendingUp, TrendingDown, BarChart3,
+  Shield, ShieldOff, Ban, RotateCcw, AlertOctagon
 } from 'lucide-react';
 import { NavTab } from '../components/Navbar';
 import {
@@ -11,8 +12,10 @@ import {
   activateAgent, deactivateAgent, withdrawBid,
   fetchAgentReputation, fetchAgentReputationHistory,
   fetchAgentActivity,
+  fetchAgentSecurity, suspendAgent, restoreAgent,
   ApiAgent, TaskMatchResult, ApiBid, TaskSummaryForMatch,
-  ReputationBreakdown, ReputationEvent, ActivityEvent
+  ReputationBreakdown, ReputationEvent, ActivityEvent,
+  AgentSecuritySummary, SecurityEvent
 } from '../services/api';
 import { MatchScoreCard, MATCH_LEVEL_STYLES } from '../components/MatchScoreCard';
 import { SubmitBidModal } from '../components/SubmitBidModal';
@@ -84,6 +87,14 @@ export const AgentDetailsPage: React.FC<AgentDetailsPageProps> = ({ agentId, onN
   const [agentActivities, setAgentActivities] = useState<ActivityEvent[]>([]);
   const [activitiesLoading, setActivitiesLoading] = useState(false);
 
+  // Phase 18: Security & Trust
+  const [securityProfile, setSecurityProfile] = useState<AgentSecuritySummary | null>(null);
+  const [securityLoading, setSecurityLoading] = useState(false);
+  const [suspendReason, setSuspendReason] = useState('');
+  const [showSuspendForm, setShowSuspendForm] = useState(false);
+  const [securityActionBusy, setSecurityActionBusy] = useState(false);
+  const [securityActionError, setSecurityActionError] = useState<string | null>(null);
+
   // Modals state
   const [selectedMatch, setSelectedMatch] = useState<TaskMatchResult | null>(null);
   const [bidModalTask, setBidModalTask] = useState<{ task: TaskSummaryForMatch; matchScore: number } | null>(null);
@@ -124,6 +135,13 @@ export const AgentDetailsPage: React.FC<AgentDetailsPageProps> = ({ agentId, onN
         .then((acts) => setAgentActivities(acts || []))
         .catch(() => {})
         .finally(() => setActivitiesLoading(false));
+
+      // Phase 18: Load security profile
+      setSecurityLoading(true);
+      fetchAgentSecurity(agentId)
+        .then((sp) => setSecurityProfile(sp))
+        .catch(() => {})
+        .finally(() => setSecurityLoading(false));
     } catch (e: any) {
       setError(e.message ?? 'Failed to load agent');
     } finally {
@@ -620,6 +638,218 @@ export const AgentDetailsPage: React.FC<AgentDetailsPageProps> = ({ agentId, onN
                 );
               })}
             </div>
+          )}
+        </div>
+
+        {/* Phase 18: Security & Trust Panel */}
+        <div className="glass-panel rounded-2xl border border-slate-200 p-6">
+          <div className="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-slate-200">
+            <div className="flex items-center gap-2">
+              <Shield className="w-4 h-4 text-rose-500" />
+              <h2 className="font-bold text-[#18202F] text-sm sm:text-base">Security & Trust</h2>
+              {securityProfile && (
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                  securityProfile.risk_level === 'Critical' ? 'bg-rose-100 text-rose-700 border-rose-300' :
+                  securityProfile.risk_level === 'High'     ? 'bg-orange-100 text-orange-700 border-orange-300' :
+                  securityProfile.risk_level === 'Medium'   ? 'bg-amber-100 text-amber-700 border-amber-300' :
+                                                              'bg-emerald-100 text-emerald-700 border-emerald-300'
+                }`}>
+                  {securityProfile.risk_level} Risk
+                </span>
+              )}
+            </div>
+            <span className="text-xs font-mono text-[#596273]">Live Risk Engine</span>
+          </div>
+
+          {securityLoading ? (
+            <div className="text-center py-6 text-[#87909F] text-xs font-mono">Loading security profile...</div>
+          ) : securityProfile ? (
+            <div className="space-y-5">
+              {/* Suspension Banner */}
+              {securityProfile.is_suspended && (
+                <div className="flex items-start gap-3 p-4 rounded-xl bg-rose-50 border border-rose-200">
+                  <Ban className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-bold text-rose-700">Agent Suspended</p>
+                    <p className="text-xs text-rose-600 mt-0.5">{securityProfile.suspension_reason || 'Suspended by security policy.'}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Risk Gauge + Stats */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* Risk Score Gauge */}
+                <div className="p-4 rounded-xl border border-slate-200 bg-white">
+                  <p className="text-xs text-[#596273] mb-2 font-semibold">Risk Score</p>
+                  <div className="flex items-end gap-1">
+                    <span className={`text-3xl font-extrabold font-mono ${
+                      securityProfile.risk_level === 'Critical' ? 'text-rose-600' :
+                      securityProfile.risk_level === 'High'     ? 'text-orange-600' :
+                      securityProfile.risk_level === 'Medium'   ? 'text-amber-600' :
+                                                                   'text-emerald-600'
+                    }`}>{securityProfile.risk_score.toFixed(0)}</span>
+                    <span className="text-sm text-[#596273] mb-1">/100</span>
+                  </div>
+                  <div className="mt-2 h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-700 ${
+                        securityProfile.risk_level === 'Critical' ? 'bg-rose-500' :
+                        securityProfile.risk_level === 'High'     ? 'bg-orange-500' :
+                        securityProfile.risk_level === 'Medium'   ? 'bg-amber-400' :
+                                                                     'bg-emerald-400'
+                      }`}
+                      style={{ width: `${securityProfile.risk_score}%` }}
+                    />
+                  </div>
+                </div>
+                {/* Violations */}
+                <div className="p-4 rounded-xl border border-slate-200 bg-white">
+                  <p className="text-xs text-[#596273] mb-2 font-semibold">Violations</p>
+                  <p className={`text-3xl font-extrabold font-mono ${
+                    securityProfile.violation_count > 5 ? 'text-rose-600' :
+                    securityProfile.violation_count > 2 ? 'text-amber-600' : 'text-emerald-600'
+                  }`}>{securityProfile.violation_count}</p>
+                  <p className="text-xs text-[#596273] mt-2">Total recorded violations</p>
+                </div>
+                {/* Suspension Status */}
+                <div className="p-4 rounded-xl border border-slate-200 bg-white">
+                  <p className="text-xs text-[#596273] mb-2 font-semibold">Status</p>
+                  <div className={`flex items-center gap-2 ${
+                    securityProfile.is_suspended ? 'text-rose-600' : 'text-emerald-600'
+                  }`}>
+                    {securityProfile.is_suspended
+                      ? <><ShieldOff className="w-5 h-5" /><span className="font-bold text-sm">Suspended</span></>
+                      : <><ShieldCheck className="w-5 h-5" /><span className="font-bold text-sm">Active</span></>}
+                  </div>
+                  {securityProfile.last_violation_at && (
+                    <p className="text-[10px] text-[#596273] mt-2 font-mono">
+                      Last violation: {new Date(securityProfile.last_violation_at).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Recent Security Events */}
+              {securityProfile.recent_events.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <AlertOctagon className="w-3.5 h-3.5 text-rose-500" />
+                    <h3 className="text-xs font-bold text-[#18202F]">Recent Security Events</h3>
+                  </div>
+                  <div className="space-y-2">
+                    {securityProfile.recent_events.slice(0, 5).map((ev) => (
+                      <div key={ev.id} className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 bg-white text-xs font-mono">
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 font-bold ${
+                          ev.severity === 'critical' ? 'bg-rose-100 text-rose-700 border border-rose-200' :
+                          ev.severity === 'high'     ? 'bg-orange-100 text-orange-700 border border-orange-200' :
+                          ev.severity === 'medium'   ? 'bg-amber-100 text-amber-700 border border-amber-200' :
+                                                       'bg-slate-100 text-slate-600 border border-slate-200'
+                        }`}>
+                          <AlertCircle className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className={`font-bold uppercase ${
+                              ev.severity === 'critical' ? 'text-rose-600' :
+                              ev.severity === 'high'     ? 'text-orange-600' :
+                              ev.severity === 'medium'   ? 'text-amber-600' : 'text-slate-600'
+                            }`}>{ev.severity}</span>
+                            <span className="text-slate-500 truncate">{ev.reason}</span>
+                          </div>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[#3155D9]">{ev.event_type.replace(/_/g, ' ')}</span>
+                            {ev.event_code && <span className="text-[#87909F]">{ev.event_code}</span>}
+                            <span className="text-[#87909F]">{ev.created_at ? new Date(ev.created_at).toLocaleString() : ''}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Admin Actions: Suspend / Restore */}
+              {securityActionError && (
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700">{securityActionError}</div>
+              )}
+              <div className="flex flex-wrap gap-3 pt-2 border-t border-slate-100">
+                {securityProfile.is_suspended ? (
+                  <button
+                    onClick={async () => {
+                      setSecurityActionBusy(true);
+                      setSecurityActionError(null);
+                      try {
+                        const updated = await restoreAgent(agentId, 'Administrative clearance via UI', 'admin');
+                        setAgent(updated);
+                        fetchAgentSecurity(agentId).then(setSecurityProfile).catch(() => {});
+                      } catch (e: any) {
+                        setSecurityActionError(e.message);
+                      } finally {
+                        setSecurityActionBusy(false);
+                      }
+                    }}
+                    disabled={securityActionBusy}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-all disabled:opacity-50"
+                  >
+                    {securityActionBusy ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
+                    Restore Agent
+                  </button>
+                ) : (
+                  <>
+                    {showSuspendForm ? (
+                      <div className="flex flex-col gap-2 w-full">
+                        <input
+                          type="text"
+                          value={suspendReason}
+                          onChange={(e) => setSuspendReason(e.target.value)}
+                          placeholder="Reason for suspension..."
+                          className="px-3 py-2 rounded-xl border border-slate-300 text-sm w-full focus:outline-none focus:border-rose-400"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={async () => {
+                              if (!suspendReason.trim()) { setSecurityActionError('Please enter a suspension reason.'); return; }
+                              setSecurityActionBusy(true);
+                              setSecurityActionError(null);
+                              try {
+                                const updated = await suspendAgent(agentId, suspendReason, 'admin');
+                                setAgent(updated);
+                                setShowSuspendForm(false);
+                                setSuspendReason('');
+                                fetchAgentSecurity(agentId).then(setSecurityProfile).catch(() => {});
+                              } catch (e: any) {
+                                setSecurityActionError(e.message);
+                              } finally {
+                                setSecurityActionBusy(false);
+                              }
+                            }}
+                            disabled={securityActionBusy}
+                            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-rose-200 text-rose-700 bg-rose-50 hover:bg-rose-100 transition-all disabled:opacity-50"
+                          >
+                            {securityActionBusy ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Ban className="w-4 h-4" />}
+                            Confirm Suspend
+                          </button>
+                          <button
+                            onClick={() => { setShowSuspendForm(false); setSuspendReason(''); setSecurityActionError(null); }}
+                            className="px-4 py-2 rounded-xl text-sm font-semibold border border-slate-200 text-[#596273] hover:bg-slate-50 transition-all"
+                          >Cancel</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setShowSuspendForm(true)}
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-rose-200 text-rose-700 bg-rose-50 hover:bg-rose-100 transition-all"
+                      >
+                        <Ban className="w-4 h-4" />
+                        Suspend Agent
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-6 text-[#87909F] text-xs font-mono">No security profile available.</div>
           )}
         </div>
 

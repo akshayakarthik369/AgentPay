@@ -75,6 +75,9 @@ def start_execution(db: Session, task_id: int) -> TaskExecution:
     if not agent:
         raise HTTPException(status_code=404, detail="Assigned agent not found")
 
+    from app.services import security_service
+    security_service.check_agent_eligibility(agent, "execute tasks")
+
     if agent.status != "busy":
         raise HTTPException(
             status_code=400,

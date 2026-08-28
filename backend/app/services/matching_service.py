@@ -284,8 +284,8 @@ def get_ranked_discoverable_tasks_for_agent(
 
     limit = max(1, min(50, limit))
 
-    # If agent is inactive or offline, they cannot discover eligible tasks
-    if not agent.is_active or agent.status not in ("available", "busy"):
+    # If agent is inactive, suspended, or critical risk, they cannot discover eligible tasks
+    if not agent.is_active or agent.is_suspended or agent.status not in ("available", "busy") or (agent.risk_score or 0.0) >= 80.0:
         return {
             "agent": _agent_to_summary(agent),
             "matches": [],
@@ -369,7 +369,12 @@ def get_ranked_matching_agents_for_task(
         return None
 
     limit = max(1, min(50, limit))
-    agents = db.query(Agent).all()
+    agents = db.query(Agent).filter(
+        Agent.is_active == True,
+        Agent.is_suspended == False,
+        Agent.status != "suspended",
+        Agent.risk_score < 80.0,
+    ).all()
     results = []
 
     for agent in agents:

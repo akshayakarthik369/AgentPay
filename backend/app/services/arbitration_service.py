@@ -55,6 +55,9 @@ def select_arbitrator_agent(
         .filter(
             Agent.agent_type == "arbitrator",
             Agent.is_active == True,
+            Agent.is_suspended == False,
+            Agent.status != "suspended",
+            Agent.risk_score < 80.0,
             ~Agent.id.in_(conflicted_ids),
         )
         .first()
@@ -63,7 +66,17 @@ def select_arbitrator_agent(
         return candidate
 
     # 2. Secondary: query agents with arbitration capability
-    all_active = db.query(Agent).filter(Agent.is_active == True, ~Agent.id.in_(conflicted_ids)).all()
+    all_active = (
+        db.query(Agent)
+        .filter(
+            Agent.is_active == True,
+            Agent.is_suspended == False,
+            Agent.status != "suspended",
+            Agent.risk_score < 80.0,
+            ~Agent.id.in_(conflicted_ids),
+        )
+        .all()
+    )
     for a in all_active:
         try:
             caps = json.loads(a.capabilities) if isinstance(a.capabilities, str) else (a.capabilities or [])
@@ -77,6 +90,9 @@ def select_arbitrator_agent(
         db.query(Agent)
         .filter(
             Agent.is_active == True,
+            Agent.is_suspended == False,
+            Agent.status != "suspended",
+            Agent.risk_score < 80.0,
             ~Agent.id.in_(conflicted_ids),
         )
         .order_by(Agent.reputation_score.desc())

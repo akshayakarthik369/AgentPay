@@ -214,7 +214,7 @@ export interface ApiAgent {
   id: number;
   agent_code: string;
   name: string;
-  agent_type: 'worker' | 'verifier' | 'orchestrator';
+  agent_type: 'worker' | 'verifier' | 'orchestrator' | 'arbitrator';
   description: string;
   capabilities: string[];
   status: 'available' | 'busy' | 'offline' | 'suspended';
@@ -226,6 +226,12 @@ export interface ApiAgent {
   total_earned: number;
   success_rate?: number;
   average_verification_score?: number;
+  // Phase 18: Security & Trust
+  risk_score?: number;
+  violation_count?: number;
+  is_suspended?: boolean;
+  suspension_reason?: string | null;
+  last_violation_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -2189,3 +2195,91 @@ export async function fetchAllTransactions(limit = 100): Promise<TransactionItem
   return res.json();
 }
 
+// ---------------------------------------------------------------------------
+// Phase 18 — Security & Trust Types
+// ---------------------------------------------------------------------------
+
+export interface SecurityEvent {
+  id: number;
+  event_code?: string;
+  agent_id?: number;
+  task_id?: number;
+  event_type: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  reason: string;
+  details?: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface AgentSecuritySummary {
+  agent_id: number;
+  agent_name: string;
+  agent_code?: string;
+  risk_score: number;
+  risk_level: 'Low' | 'Medium' | 'High' | 'Critical';
+  violation_count: number;
+  is_suspended: boolean;
+  suspension_reason?: string | null;
+  last_violation_at?: string | null;
+  status: string;
+  recent_events: SecurityEvent[];
+}
+
+// ---------------------------------------------------------------------------
+// Phase 18 — Security API Functions
+// ---------------------------------------------------------------------------
+
+/** GET /api/security/events */
+export async function fetchSecurityEvents(params?: {
+  agent_id?: number;
+  task_id?: number;
+  severity?: string;
+  event_type?: string;
+  limit?: number;
+}): Promise<SecurityEvent[]> {
+  const query = new URLSearchParams();
+  if (params?.agent_id !== undefined) query.set('agent_id', String(params.agent_id));
+  if (params?.task_id !== undefined) query.set('task_id', String(params.task_id));
+  if (params?.severity) query.set('severity', params.severity);
+  if (params?.event_type) query.set('event_type', params.event_type);
+  if (params?.limit !== undefined) query.set('limit', String(params.limit));
+  const qs = query.toString();
+  const res = await fetch(`${API_BASE_URL}/api/security/events${qs ? `?${qs}` : ''}`);
+  if (!res.ok) throw new Error('Failed to fetch security events');
+  return res.json();
+}
+
+/** GET /api/agents/:id/security */
+export async function fetchAgentSecurity(agentId: number): Promise<AgentSecuritySummary> {
+  const res = await fetch(`${API_BASE_URL}/api/agents/${agentId}/security`);
+  if (!res.ok) throw new Error(`Failed to fetch security profile for agent #${agentId}`);
+  return res.json();
+}
+
+/** POST /api/agents/:id/suspend */
+export async function suspendAgent(agentId: number, reason: string, actor = 'admin'): Promise<ApiAgent> {
+  const res = await fetch(`${API_BASE_URL}/api/agents/${agentId}/suspend`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reason, actor }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || `Failed to suspend agent #${agentId}`);
+  }
+  return res.json();
+}
+
+/** POST /api/agents/:id/restore */
+export async function restoreAgent(agentId: number, reason = 'Administrative clearance', actor = 'admin'): Promise<ApiAgent> {
+  const res = await fetch(`${API_BASE_URL}/api/agents/${agentId}/restore`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reason, actor }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || `Failed to restore agent #${agentId}`);
+  }
+  return res.json();
+}

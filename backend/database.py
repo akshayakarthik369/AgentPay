@@ -78,6 +78,17 @@ def run_migrations():
                     conn.execute(text("ALTER TABLE agents ADD COLUMN experience_score FLOAT DEFAULT 50.0"))
                 if "reputation_updated_at" not in existing_columns:
                     conn.execute(text("ALTER TABLE agents ADD COLUMN reputation_updated_at DATETIME"))
+                # Phase 18 Security columns
+                if "risk_score" not in existing_columns:
+                    conn.execute(text("ALTER TABLE agents ADD COLUMN risk_score FLOAT DEFAULT 0.0"))
+                if "violation_count" not in existing_columns:
+                    conn.execute(text("ALTER TABLE agents ADD COLUMN violation_count INTEGER DEFAULT 0"))
+                if "is_suspended" not in existing_columns:
+                    conn.execute(text("ALTER TABLE agents ADD COLUMN is_suspended BOOLEAN DEFAULT 0"))
+                if "suspension_reason" not in existing_columns:
+                    conn.execute(text("ALTER TABLE agents ADD COLUMN suspension_reason TEXT"))
+                if "last_violation_at" not in existing_columns:
+                    conn.execute(text("ALTER TABLE agents ADD COLUMN last_violation_at DATETIME"))
                 conn.commit()
         except Exception as e:
             print(f"Migration note (agents): {e}")

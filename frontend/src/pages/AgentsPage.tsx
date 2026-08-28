@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Users, PlusCircle, Search, Filter, RefreshCw,
   Cpu, CheckCircle2, XCircle, AlertCircle, Clock,
-  Star, Wallet, Award, ChevronRight, Zap
+  Star, Wallet, Award, ChevronRight, Zap, Shield, ShieldOff
 } from 'lucide-react';
 import { NavTab } from '../components/Navbar';
 import {
@@ -77,6 +77,24 @@ const AgentCard: React.FC<{
         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold border capitalize whitespace-nowrap shrink-0 ${TYPE_COLORS[agent.agent_type] ?? TYPE_COLORS.worker}`}>
           {agent.agent_type}
         </span>
+        {/* Phase 18: Risk badge */}
+        {agent.risk_score !== undefined && agent.risk_score > 0 && (
+          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border whitespace-nowrap shrink-0 ${
+            (agent.risk_score ?? 0) >= 80 ? 'bg-rose-100 text-rose-700 border-rose-300' :
+            (agent.risk_score ?? 0) >= 60 ? 'bg-orange-100 text-orange-700 border-orange-300' :
+            (agent.risk_score ?? 0) >= 30 ? 'bg-amber-100 text-amber-700 border-amber-300' :
+                                             'bg-slate-100 text-slate-500 border-slate-200'
+          }`}>
+            <Shield className="w-2.5 h-2.5" />
+            Risk {agent.risk_score?.toFixed(0)}
+          </span>
+        )}
+        {agent.is_suspended && (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border bg-rose-100 text-rose-700 border-rose-300 whitespace-nowrap shrink-0">
+            <ShieldOff className="w-2.5 h-2.5" />
+            Suspended
+          </span>
+        )}
       </div>
     </div>
 
