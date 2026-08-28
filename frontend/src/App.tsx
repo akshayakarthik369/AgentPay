@@ -17,6 +17,7 @@ import { SettlementDetailsPage } from './pages/SettlementDetailsPage';
 import { WalletPage } from './pages/WalletPage';
 import { ReputationPage } from './pages/ReputationPage';
 import { DisputesPage } from './pages/DisputesPage';
+import { ActivityHistoryPage } from './pages/ActivityHistoryPage';
 import { Footer } from './components/Footer';
 import { checkBackendHealth } from './services/api';
 
@@ -181,6 +182,14 @@ export function App() {
         return <ReputationPage onNavigate={setActiveTab} />;
       case 'disputes':
         return <DisputesPage onNavigate={setActiveTab} />;
+      case 'activity':
+        return (
+          <ActivityHistoryPage
+            onNavigate={setActiveTab}
+            onSelectTask={handleSelectTask}
+            onSelectAgent={handleSelectAgent}
+          />
+        );
       default:
         return <Home onNavigate={setActiveTab} backendStatus={backendStatus} />;
     }

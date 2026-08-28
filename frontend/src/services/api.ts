@@ -2089,3 +2089,103 @@ export async function fetchArbitrationAudit(id: number): Promise<ArbitrationAudi
   }
   return res.json();
 }
+
+// ---------------------------------------------------------------------------
+// Phase 17: Transaction & Activity History
+// ---------------------------------------------------------------------------
+
+export interface ActivityEvent {
+  event_type: string;
+  title: string;
+  description: string;
+  task_id?: number | null;
+  agent_id?: number | null;
+  related_entity_type?: string | null;
+  related_entity_id?: number | null;
+  related_entity_code?: string | null;
+  amount?: number | null;
+  status?: string | null;
+  created_at?: string | null;
+}
+
+export interface TransactionItem {
+  id: number;
+  entry_code?: string | null;
+  entry_type: string;
+  direction: 'credit' | 'debit' | 'lock' | 'other' | string;
+  amount: number;
+  balance_type: string;
+  description: string;
+  status: string;
+  wallet_id?: number | null;
+  settlement_id?: number | null;
+  settlement_code?: string | null;
+  escrow_id?: number | null;
+  escrow_code?: string | null;
+  task_id?: number | null;
+  task_title?: string | null;
+  created_at?: string | null;
+}
+
+/** GET /api/activity */
+export async function fetchActivity(params?: {
+  event_type?: string;
+  task_id?: number;
+  agent_id?: number;
+  limit?: number;
+}): Promise<ActivityEvent[]> {
+  const query = new URLSearchParams();
+  if (params?.event_type) query.append('event_type', params.event_type);
+  if (params?.task_id) query.append('task_id', String(params.task_id));
+  if (params?.agent_id) query.append('agent_id', String(params.agent_id));
+  if (params?.limit) query.append('limit', String(params.limit));
+
+  const url = `${API_BASE_URL}/api/activity${query.toString() ? `?${query.toString()}` : ''}`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || 'Failed to fetch activity history');
+  }
+  return res.json();
+}
+
+/** GET /api/tasks/:id/activity */
+export async function fetchTaskActivity(taskId: number): Promise<ActivityEvent[]> {
+  const res = await fetch(`${API_BASE_URL}/api/tasks/${taskId}/activity`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || `Failed to fetch activity for task #${taskId}`);
+  }
+  return res.json();
+}
+
+/** GET /api/agents/:id/activity */
+export async function fetchAgentActivity(agentId: number, limit = 50): Promise<ActivityEvent[]> {
+  const res = await fetch(`${API_BASE_URL}/api/agents/${agentId}/activity?limit=${limit}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || `Failed to fetch activity for agent #${agentId}`);
+  }
+  return res.json();
+}
+
+/** GET /api/wallets/:id/transactions */
+export async function fetchWalletTransactions(walletId: number, limit = 50): Promise<TransactionItem[]> {
+  const res = await fetch(`${API_BASE_URL}/api/wallets/${walletId}/transactions?limit=${limit}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || `Failed to fetch transactions for wallet #${walletId}`);
+  }
+  return res.json();
+}
+
+/** GET /api/wallets/transactions */
+export async function fetchAllTransactions(limit = 100): Promise<TransactionItem[]> {
+  const res = await fetch(`${API_BASE_URL}/api/wallets/transactions?limit=${limit}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || 'Failed to fetch transactions');
+  }
+  return res.json();
+}
+

@@ -15,7 +15,8 @@ import {
   XCircle, 
   RefreshCw,
   Users,
-  Gavel
+  Gavel,
+  Activity
 } from 'lucide-react';
 
 import { DepthIcon } from './DepthIcon';
@@ -37,7 +38,8 @@ export type NavTab =
   | 'settlement-details'
   | 'wallet' 
   | 'reputation' 
-  | 'disputes';
+  | 'disputes'
+  | 'activity';
 
 interface NavbarProps {
   activeTab: NavTab;
@@ -65,6 +67,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'verification',     label: 'Verification',  icon: <ShieldCheck className="w-3.5 h-3.5" /> },
     { id: 'reputation',       label: 'Reputation',    icon: <Award className="w-3.5 h-3.5" /> },
     { id: 'disputes',         label: 'Human Review',  icon: <Gavel className="w-3.5 h-3.5" /> },
+    { id: 'activity',         label: 'Activity',      icon: <Activity className="w-3.5 h-3.5" /> },
   ];
 
   const handleNavClick = (tab: NavTab) => {

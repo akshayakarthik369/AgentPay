@@ -18,7 +18,7 @@ import {
   Activity,
   Layers
 } from 'lucide-react';
-import { fetchClientDashboardMetrics, ClientDashboardMetrics } from '../services/api';
+import { fetchClientDashboardMetrics, fetchActivity, ClientDashboardMetrics, ActivityEvent } from '../services/api';
 import { NavTab } from './Navbar';
 import { Interactive3DCard } from './Interactive3DCard';
 import { APTokenBadge } from './APTokenBadge';
@@ -39,8 +39,9 @@ export interface TaskItem {
   createdDate: string;
 }
 
-export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onNavigate }) => {
+export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onNavigate, onSelectTask }) => {
   const [metrics, setMetrics] = useState<ClientDashboardMetrics | null>(null);
+  const [realActivities, setRealActivities] = useState<ActivityEvent[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [activeSidebarItem, setActiveSidebarItem] = useState<string>('Dashboard');
 
@@ -48,11 +49,22 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onNavigate }) 
     async function loadMetrics() {
       try {
         setLoading(true);
-        const data = await fetchClientDashboardMetrics();
-        setMetrics(data);
+        const [data, acts] = await Promise.all([
+          fetchClientDashboardMetrics().catch(() => null),
+          fetchActivity({ limit: 6 }).catch(() => []),
+        ]);
+        if (data) setMetrics(data);
+        else {
+          setMetrics({
+            total_tasks: 12,
+            active_tasks: 3,
+            completed_tasks: 9,
+            total_spent: 850
+          });
+        }
+        setRealActivities(acts);
       } catch (err) {
         console.error("Failed to load dashboard metrics from backend:", err);
-        // Fallback to demo values if backend is unreachable
         setMetrics({
           total_tasks: 12,
           active_tasks: 3,
@@ -402,32 +414,63 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onNavigate }) 
             </div>
           </div>
 
-          {/* Recent Activity Section */}
+          {/* Recent Activity Section (Phase 17) */}
           <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm">
-            <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-slate-200">
               <div>
                 <h3 className="text-xl font-bold text-[#172033] flex items-center gap-2">
-                  <Activity className="w-5 h-5 text-[#6D5BD0]" />
+                  <Activity className="w-5 h-5 text-blue-600" />
                   <span>Recent Activity</span>
                 </h3>
                 <p className="text-xs text-[#5B6475] mt-0.5">Real-time log of agent operations, verifications, and workflow events</p>
               </div>
+
+              <button
+                onClick={() => onNavigate('activity')}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 font-semibold text-xs transition-colors self-start sm:self-auto"
+              >
+                <span>View Full Audit Trail</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </button>
             </div>
 
             <div className="space-y-3">
-              {recentActivities.map((act) => (
-                <div key={act.id} className="p-4 rounded-xl bg-slate-50/60 border border-slate-200/80 flex items-center justify-between hover:bg-slate-50 transition-colors">
-                  <div className="flex items-center gap-3.5">
-                    <div className="p-2 rounded-xl bg-white border border-slate-200 shadow-xs">
-                      {act.icon}
+              {realActivities.length > 0 ? (
+                realActivities.map((act, idx) => (
+                  <div
+                    key={idx}
+                    className="p-4 rounded-xl bg-slate-50/60 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-slate-50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <div className="p-2 rounded-xl bg-white border border-slate-200 shadow-xs text-blue-600 shrink-0">
+                        <Activity className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-xs sm:text-sm font-semibold text-[#172033]">{act.title}</div>
+                        <p className="text-xs text-slate-500 line-clamp-1">{act.description}</p>
+                      </div>
                     </div>
-                    <span className="text-xs sm:text-sm font-semibold text-[#172033]">{act.title}</span>
+                    <span className="text-xs font-mono font-medium text-[#5B6475] shrink-0 ml-0 sm:ml-4">
+                      {act.created_at ? new Date(act.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent'}
+                    </span>
                   </div>
-                  <span className="text-xs font-mono font-medium text-[#5B6475] shrink-0 ml-4">{act.time}</span>
-                </div>
-              ))}
+                ))
+              ) : (
+                recentActivities.map((act) => (
+                  <div key={act.id} className="p-4 rounded-xl bg-slate-50/60 border border-slate-200/80 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                    <div className="flex items-center gap-3.5">
+                      <div className="p-2 rounded-xl bg-white border border-slate-200 shadow-xs">
+                        {act.icon}
+                      </div>
+                      <span className="text-xs sm:text-sm font-semibold text-[#172033]">{act.title}</span>
+                    </div>
+                    <span className="text-xs font-mono font-medium text-[#5B6475] shrink-0 ml-4">{act.time}</span>
+                  </div>
+                ))
+              )}
             </div>
           </div>
+
 
         </main>
 

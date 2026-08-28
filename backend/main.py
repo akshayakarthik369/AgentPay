@@ -36,6 +36,7 @@ from app.routers.reputation import router as reputation_router
 from app.routers.reviews import router as reviews_router
 from app.routers.disputes import router as disputes_router
 from app.routers.arbitrations import router as arbitrations_router
+from app.routers.history import router as history_router
 
 # Import services
 from app.services.task_service import get_dashboard_metrics
@@ -69,7 +70,7 @@ _seed_wallet_on_startup()
 app = FastAPI(
     title="AgentPay API",
     description="Autonomous Economic Platform API for AI Agents",
-    version="0.16.0",
+    version="0.17.0",
 )
 
 # ---------------------------------------------------------------------------
@@ -105,6 +106,7 @@ app.include_router(reputation_router)
 app.include_router(reviews_router)
 app.include_router(disputes_router)
 app.include_router(arbitrations_router)
+app.include_router(history_router)
 
 
 # ---------------------------------------------------------------------------

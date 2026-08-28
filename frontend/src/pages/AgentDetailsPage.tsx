@@ -10,8 +10,9 @@ import {
   fetchAgentById, fetchDiscoverableTasks, fetchAgentBids,
   activateAgent, deactivateAgent, withdrawBid,
   fetchAgentReputation, fetchAgentReputationHistory,
+  fetchAgentActivity,
   ApiAgent, TaskMatchResult, ApiBid, TaskSummaryForMatch,
-  ReputationBreakdown, ReputationEvent
+  ReputationBreakdown, ReputationEvent, ActivityEvent
 } from '../services/api';
 import { MatchScoreCard, MATCH_LEVEL_STYLES } from '../components/MatchScoreCard';
 import { SubmitBidModal } from '../components/SubmitBidModal';
@@ -79,6 +80,10 @@ export const AgentDetailsPage: React.FC<AgentDetailsPageProps> = ({ agentId, onN
   const [repHistory, setRepHistory] = useState<ReputationEvent[]>([]);
   const [repLoading, setRepLoading] = useState(false);
 
+  // Phase 17: Agent Activity History
+  const [agentActivities, setAgentActivities] = useState<ActivityEvent[]>([]);
+  const [activitiesLoading, setActivitiesLoading] = useState(false);
+
   // Modals state
   const [selectedMatch, setSelectedMatch] = useState<TaskMatchResult | null>(null);
   const [bidModalTask, setBidModalTask] = useState<{ task: TaskSummaryForMatch; matchScore: number } | null>(null);
@@ -112,6 +117,13 @@ export const AgentDetailsPage: React.FC<AgentDetailsPageProps> = ({ agentId, onN
         .then(([rb, rh]) => { setRepBreakdown(rb); setRepHistory(rh); })
         .catch(() => {})
         .finally(() => setRepLoading(false));
+
+      // Phase 17: Load agent activity history
+      setActivitiesLoading(true);
+      fetchAgentActivity(agentId, 25)
+        .then((acts) => setAgentActivities(acts || []))
+        .catch(() => {})
+        .finally(() => setActivitiesLoading(false));
     } catch (e: any) {
       setError(e.message ?? 'Failed to load agent');
     } finally {
@@ -441,6 +453,57 @@ export const AgentDetailsPage: React.FC<AgentDetailsPageProps> = ({ agentId, onN
             </div>
           )}
         </div>
+
+        {/* Phase 17: Unified Agent Activity History */}
+        <div className="glass-panel rounded-2xl border border-slate-200 p-6">
+          <div className="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-slate-200">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-blue-600" />
+              <h2 className="font-bold text-[#18202F] text-sm sm:text-base">
+                Recent Agent Activity & Lifecycle History ({agentActivities.length})
+              </h2>
+            </div>
+            <span className="text-xs font-mono text-[#596273]">Audited Activity Stream</span>
+          </div>
+
+          {activitiesLoading ? (
+            <div className="text-center py-6 text-[#87909F] text-xs font-mono">
+              Loading agent activities...
+            </div>
+          ) : agentActivities.length === 0 ? (
+            <div className="text-center py-6 text-[#87909F] text-xs font-mono">
+              No recent task assignments or verified outcomes recorded for this agent.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {agentActivities.map((act, idx) => (
+                <div key={idx} className="p-3.5 rounded-xl border border-slate-200 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-bold text-slate-900">{act.title}</span>
+                      {act.status && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-100 text-slate-700">
+                          {act.status}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-600 leading-relaxed">{act.description}</p>
+                    <span className="text-[10px] text-slate-400 font-mono mt-1 block">
+                      {act.created_at ? new Date(act.created_at).toLocaleString() : 'N/A'}
+                    </span>
+                  </div>
+
+                  {act.amount !== null && act.amount !== undefined && (
+                    <div className="shrink-0 text-xs font-mono font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100">
+                      {act.amount > 0 && act.event_type === 'reputation_updated' ? `+${act.amount}` : act.amount} AP
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
 
         {/* Recommended Tasks with Multi-Factor Ranking & Submit Bid CTA */}
         <div className="glass-panel rounded-2xl border border-slate-200 p-6">

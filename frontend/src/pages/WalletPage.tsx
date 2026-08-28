@@ -17,17 +17,21 @@ import {
   ArrowUpRight,
   TrendingUp,
   Receipt,
-  FileCheck
+  FileCheck,
+  Activity,
+  Filter
 } from 'lucide-react';
 import {
   fetchClientWallet,
   fetchSettlements,
   fetchEscrows,
   fetchSettlementSummary,
+  fetchAllTransactions,
   ApiWallet,
   ApiSettlement,
   ApiEscrow,
-  ApiSettlementSummary
+  ApiSettlementSummary,
+  TransactionItem
 } from '../services/api';
 import { APTokenBadge } from '../components/APTokenBadge';
 
@@ -45,27 +49,31 @@ export const WalletPage: React.FC<WalletPageProps> = ({
   const [wallet, setWallet] = useState<ApiWallet | null>(null);
   const [settlements, setSettlements] = useState<ApiSettlement[]>([]);
   const [escrows, setEscrows] = useState<ApiEscrow[]>([]);
+  const [transactions, setTransactions] = useState<TransactionItem[]>([]);
   const [summary, setSummary] = useState<ApiSettlementSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<'all' | 'completed' | 'blocked'>('all');
+  const [txFilter, setTxFilter] = useState<'all' | 'escrow_lock' | 'settlement_debit' | 'settlement_credit'>('all');
 
   const loadData = async (isRefresh = false) => {
     try {
       if (isRefresh) setRefreshing(true);
       else setLoading(true);
 
-      const [wData, sData, eData, sumData] = await Promise.all([
+      const [wData, sData, eData, sumData, txData] = await Promise.all([
         fetchClientWallet().catch(() => null),
         fetchSettlements().catch(() => []),
         fetchEscrows().catch(() => []),
         fetchSettlementSummary().catch(() => null),
+        fetchAllTransactions(50).catch(() => []),
       ]);
 
       setWallet(wData);
       setSettlements(sData);
       setEscrows(eData);
       setSummary(sumData);
+      setTransactions(txData);
     } catch (err) {
       console.error('Failed to load wallet data:', err);
     } finally {
@@ -83,6 +91,11 @@ export const WalletPage: React.FC<WalletPageProps> = ({
     return s.status === filter;
   });
 
+  const filteredTransactions = transactions.filter((tx) => {
+    if (txFilter === 'all') return true;
+    return tx.entry_type === txFilter;
+  });
+
   return (
     <div className="max-w-6xl mx-auto py-10 px-4 sm:px-6 lg:px-8 space-y-8">
       {/* Header */}
@@ -96,18 +109,28 @@ export const WalletPage: React.FC<WalletPageProps> = ({
             Requester Wallet & Escrow Ledger
           </h1>
           <p className="text-sm text-slate-600 max-w-2xl mt-1">
-            Auditable balance tracking and conditional AP Credit settlements powered by independent verification.
+            Auditable balance tracking, real AP movement history, and conditional payouts triggered by independent verification.
           </p>
         </div>
 
-        <button
-          onClick={() => loadData(true)}
-          disabled={refreshing}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-semibold transition-all shadow-xs disabled:opacity-50 self-start sm:self-center"
-        >
-          <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-          Refresh Balances
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => onNavigate('activity')}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-900 text-white hover:bg-blue-800 text-sm font-semibold transition-all shadow-xs"
+          >
+            <Activity className="w-4 h-4" />
+            Lifecycle Audit Feed
+          </button>
+
+          <button
+            onClick={() => loadData(true)}
+            disabled={refreshing}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-semibold transition-all shadow-xs disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh Balances
+          </button>
+        </div>
       </div>
 
       {/* Simulated AP Notice */}
@@ -175,13 +198,178 @@ export const WalletPage: React.FC<WalletPageProps> = ({
         </div>
       </div>
 
-      {/* Recent Settlements Section */}
+      {/* Real AP Financial Transactions Ledger (Phase 17) */}
+      <div className="bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <Receipt className="w-5 h-5 text-emerald-600" />
+                Transaction History (Ledger)
+              </h2>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono">
+                REAL AP MOVEMENTS
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Verified double-entry bookkeeping ledger: escrow locks, settlement debits, and worker credits
+            </p>
+          </div>
+
+          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl self-start sm:self-auto">
+            <button
+              onClick={() => setTxFilter('all')}
+              className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
+                txFilter === 'all' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              All ({transactions.length})
+            </button>
+            <button
+              onClick={() => setTxFilter('escrow_lock')}
+              className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
+                txFilter === 'escrow_lock' ? 'bg-white text-amber-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Locks
+            </button>
+            <button
+              onClick={() => setTxFilter('settlement_debit')}
+              className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
+                txFilter === 'settlement_debit' ? 'bg-white text-purple-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Debits
+            </button>
+            <button
+              onClick={() => setTxFilter('settlement_credit')}
+              className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
+                txFilter === 'settlement_credit' ? 'bg-white text-emerald-800 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Credits
+            </button>
+          </div>
+        </div>
+
+        {filteredTransactions.length === 0 ? (
+          <div className="text-center py-10 border border-dashed border-slate-200 rounded-2xl">
+            <Receipt className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+            <p className="text-sm font-semibold text-slate-700">No ledger transactions found</p>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Real transactions appear automatically when tasks are assigned (escrow locked) and settled upon verification.
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 font-semibold uppercase tracking-wider">
+                  <th className="pb-3 pr-4">Entry Code</th>
+                  <th className="pb-3 pr-4">Type</th>
+                  <th className="pb-3 pr-4">Task & Reference</th>
+                  <th className="pb-3 pr-4">Amount</th>
+                  <th className="pb-3 pr-4">Balance Type</th>
+                  <th className="pb-3 pr-4">Status</th>
+                  <th className="pb-3 pr-4">Timestamp</th>
+                  <th className="pb-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                {filteredTransactions.map((tx) => (
+                  <tr key={tx.id} className="hover:bg-slate-50/60 transition-colors">
+                    <td className="py-3.5 pr-4 font-mono font-bold text-blue-700">
+                      {tx.entry_code || `LE-${tx.id}`}
+                    </td>
+                    <td className="py-3.5 pr-4">
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold ${
+                          tx.direction === 'credit'
+                            ? 'text-emerald-700 bg-emerald-50 border border-emerald-200/60'
+                            : tx.direction === 'debit'
+                            ? 'text-purple-700 bg-purple-50 border border-purple-200/60'
+                            : 'text-amber-700 bg-amber-50 border border-amber-200/60'
+                        }`}
+                      >
+                        {tx.direction === 'credit' && <ArrowDownRight className="w-3 h-3" />}
+                        {tx.direction === 'debit' && <ArrowUpRight className="w-3 h-3" />}
+                        {tx.direction === 'lock' && <Lock className="w-3 h-3" />}
+                        {tx.entry_type.replace('_', ' ').toUpperCase()}
+                      </span>
+                    </td>
+                    <td className="py-3.5 pr-4 max-w-[180px]">
+                      <div className="truncate font-semibold text-slate-900">
+                        {tx.task_title || (tx.task_id ? `Task #${tx.task_id}` : 'Platform')}
+                      </div>
+                      <span className="text-[11px] font-mono text-slate-400">
+                        {tx.settlement_code || tx.escrow_code || `Wallet #${tx.wallet_id}`}
+                      </span>
+                    </td>
+                    <td className="py-3.5 pr-4 font-bold text-slate-900">
+                      <span
+                        className={
+                          tx.direction === 'credit'
+                            ? 'text-emerald-700'
+                            : tx.direction === 'debit'
+                            ? 'text-purple-700'
+                            : 'text-slate-900'
+                        }
+                      >
+                        {tx.direction === 'credit' ? '+' : tx.direction === 'debit' ? '-' : ''}
+                        {tx.amount.toFixed(1)} AP
+                      </span>
+                    </td>
+                    <td className="py-3.5 pr-4 capitalize text-slate-600 font-mono text-[11px]">
+                      {tx.balance_type}
+                    </td>
+                    <td className="py-3.5 pr-4">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60 capitalize">
+                        {tx.status}
+                      </span>
+                    </td>
+                    <td className="py-3.5 pr-4 font-mono text-[11px] text-slate-500">
+                      {tx.created_at ? new Date(tx.created_at).toLocaleDateString() : 'N/A'}
+                    </td>
+                    <td className="py-3.5 text-right">
+                      {tx.settlement_id ? (
+                        <button
+                          onClick={() => {
+                            if (onSelectSettlement) onSelectSettlement(tx.settlement_id!);
+                            else onNavigate('settlement-details');
+                          }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 font-semibold text-xs transition-colors"
+                        >
+                          Settlement <ArrowRight className="w-3 h-3" />
+                        </button>
+                      ) : tx.task_id ? (
+                        <button
+                          onClick={() => {
+                            if (onSelectTask) onSelectTask(String(tx.task_id));
+                            else onNavigate('tasks');
+                          }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 font-semibold text-xs transition-colors"
+                        >
+                          Task <ArrowRight className="w-3 h-3" />
+                        </button>
+                      ) : (
+                        <span className="text-slate-400 text-[11px]">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Settlements Section */}
       <div className="bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
             <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <Receipt className="w-5 h-5 text-blue-600" />
-              Settlement History
+              <Coins className="w-5 h-5 text-blue-600" />
+              Settlement Outcomes
             </h2>
             <p className="text-xs text-slate-500">
               Auditable records of conditional payouts executed by the settlement engine

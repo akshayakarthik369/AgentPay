@@ -11,6 +11,7 @@ import {
   fetchTaskVerification,
   fetchTaskEscrow,
   fetchTaskSettlement,
+  fetchTaskActivity,
   selectWinningBid, 
   ApiTask, 
   AgentMatchResult, 
@@ -19,7 +20,8 @@ import {
   ApiResultSubmissionDetail,
   ApiVerificationDetail,
   ApiEscrow,
-  ApiSettlement
+  ApiSettlement,
+  ActivityEvent
 } from '../services/api';
 import { TaskStatus } from '../types';
 import { MatchScoreCard, MATCH_LEVEL_STYLES } from '../components/MatchScoreCard';
@@ -87,6 +89,7 @@ export const TaskDetailsPage: React.FC<TaskDetailsPageProps> = ({
   const [taskSettlement, setTaskSettlement] = useState<ApiSettlement | null>(null);
   const [matchingAgents, setMatchingAgents] = useState<AgentMatchResult[]>([]);
   const [taskBids, setTaskBids] = useState<RankedBidItem[]>([]);
+  const [taskActivities, setTaskActivities] = useState<ActivityEvent[]>([]);
 
 
 
@@ -136,6 +139,11 @@ export const TaskDetailsPage: React.FC<TaskDetailsPageProps> = ({
           fetchTaskSettlement(numId)
             .then((s) => setTaskSettlement(s))
             .catch(() => setTaskSettlement(null));
+
+          // Fetch Phase 17 task lifecycle activity
+          fetchTaskActivity(numId)
+            .then((acts) => setTaskActivities(acts || []))
+            .catch(() => setTaskActivities([]));
 
           // Fetch task submission if submitted
           if (['submitted', 'completed', 'verified', 'failed'].includes(data.status)) {
@@ -558,6 +566,51 @@ export const TaskDetailsPage: React.FC<TaskDetailsPageProps> = ({
               </div>
             </div>
           )}
+
+          {/* Phase 17 Unified Task Journey & Lifecycle Timeline */}
+          <div className="glass-panel p-6 sm:p-8 rounded-3xl border border-slate-200 mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-200">
+              <div>
+                <h3 className="text-lg font-bold text-[#18202F] flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-blue-600" />
+                  Task Lifecycle & Audit Journey
+                </h3>
+                <p className="text-xs text-[#596273] mt-0.5">
+                  Complete immutable progression through task creation, escrow lock, execution, verification, settlement, and reputation
+                </p>
+              </div>
+              <span className="text-xs font-mono text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
+                {taskActivities.length} Audited Events
+              </span>
+            </div>
+
+            {taskActivities.length === 0 ? (
+              <div className="text-center py-8 text-slate-400 text-xs">
+                No lifecycle events recorded for this task yet.
+              </div>
+            ) : (
+              <div className="relative pl-6 md:pl-8 space-y-4 before:content-[''] before:absolute before:left-3 md:before:left-4 before:top-3 before:bottom-3 before:w-0.5 before:bg-slate-200">
+                {taskActivities.map((act, i) => (
+                  <div key={i} className="relative bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs">
+                    <div className="absolute -left-[27px] md:-left-[31px] top-4 w-5 h-5 rounded-full bg-blue-600 border-2 border-white shadow-xs" />
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1">
+                      <span className="text-xs font-bold text-slate-900">{act.title}</span>
+                      <span className="text-[11px] font-mono text-slate-400">
+                        {act.created_at ? new Date(act.created_at).toLocaleString() : 'N/A'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-600 leading-relaxed">{act.description}</p>
+                    {act.amount !== null && act.amount !== undefined && (
+                      <div className="mt-2 text-xs font-bold text-blue-700">
+                        Amount / Delta: {act.amount > 0 && act.event_type === 'reputation_updated' ? `+${act.amount}` : act.amount} AP
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
 
 
           {/* Phase 7 Real Bids Received Section */}
