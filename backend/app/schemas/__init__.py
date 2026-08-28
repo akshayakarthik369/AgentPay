@@ -35,3 +35,10 @@ from .human_review import (
     HumanReviewAuditLogResponse,
     HumanReviewResolvePayload,
 )
+from .dispute import (
+    DisputeCreatePayload,
+    DisputeEvidenceCreatePayload,
+    DisputeEvidenceResponse,
+    DisputeAuditLogResponse,
+    DisputeResponse,
+)

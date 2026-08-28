@@ -51,7 +51,9 @@ import {
   Hash,
   Lock,
   Coins,
-  Gavel
+  Gavel,
+  ShieldAlert,
+  AlertTriangle
 } from 'lucide-react';
 import { Interactive3DCard } from '../components/Interactive3DCard';
 import { DepthIcon } from '../components/DepthIcon';
@@ -500,6 +502,26 @@ export const TaskDetailsPage: React.FC<TaskDetailsPageProps> = ({
                     >
                       <Gavel className="w-4 h-4" />
                       <span>Open Human Review</span>
+                    </button>
+                  )}
+
+                  {(realTask.status === 'failed' || taskVerification?.decision === 'FAIL') && (
+                    <button
+                      onClick={() => onNavigate('disputes')}
+                      className="flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-bold text-xs shadow-md transition-all"
+                    >
+                      <ShieldAlert className="w-4 h-4" />
+                      <span>Raise Dispute</span>
+                    </button>
+                  )}
+
+                  {realTask.status === 'disputed' && (
+                    <button
+                      onClick={() => onNavigate('disputes')}
+                      className="flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold text-xs shadow-md transition-all animate-pulse"
+                    >
+                      <AlertTriangle className="w-4 h-4" />
+                      <span>Dispute Active (Settlement Paused)</span>
                     </button>
                   )}
 

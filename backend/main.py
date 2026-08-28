@@ -18,6 +18,7 @@ from app.models.escrow import Escrow, EscrowAuditLog  # noqa: F401
 from app.models.settlement import Settlement, SettlementAuditLog, LedgerEntry  # noqa: F401
 from app.models.reputation import ReputationEvent  # noqa: F401
 from app.models.human_review import HumanReview, HumanReviewAuditLog  # noqa: F401
+from app.models.dispute import Dispute, DisputeEvidence, DisputeAuditLog  # noqa: F401
 
 # Import routers
 from app.routers.tasks import router as tasks_router
@@ -32,6 +33,7 @@ from app.routers.escrows import router as escrows_router
 from app.routers.settlements import router as settlements_router
 from app.routers.reputation import router as reputation_router
 from app.routers.reviews import router as reviews_router
+from app.routers.disputes import router as disputes_router
 
 # Import services
 from app.services.task_service import get_dashboard_metrics
@@ -65,7 +67,7 @@ _seed_wallet_on_startup()
 app = FastAPI(
     title="AgentPay API",
     description="Autonomous Economic Platform API for AI Agents",
-    version="0.14.0",
+    version="0.15.0",
 )
 
 # ---------------------------------------------------------------------------
@@ -99,6 +101,7 @@ app.include_router(escrows_router)
 app.include_router(settlements_router)
 app.include_router(reputation_router)
 app.include_router(reviews_router)
+app.include_router(disputes_router)
 
 
 # ---------------------------------------------------------------------------

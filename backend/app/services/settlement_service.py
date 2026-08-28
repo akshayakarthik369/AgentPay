@@ -16,6 +16,7 @@ from app.models.agent import Agent
 from app.models.wallet import Wallet
 from app.models.verification import Verification
 from app.models.result_submission import ResultSubmission
+from app.models.dispute import Dispute
 from app.services import wallet_service
 from app.services import reputation_service
 
@@ -109,6 +110,25 @@ def check_settlement_eligibility(db: Session, escrow_id: int) -> Dict[str, Any]:
     if not escrow:
         return {"eligible": False, "reason": f"Escrow with id {escrow_id} not found"}
 
+    task = db.query(Task).filter(Task.id == escrow.task_id).first()
+    if not task:
+        return {"eligible": False, "reason": f"Task with id {escrow.task_id} not found"}
+
+    # Active Dispute Check — immediate priority pause
+    active_dispute = (
+        db.query(Dispute)
+        .filter(
+            Dispute.task_id == task.id,
+            Dispute.status.in_(["open", "evidence_pending", "ready_for_arbitration", "under_arbitration"]),
+        )
+        .first()
+    )
+    if active_dispute:
+        return {
+            "eligible": False,
+            "reason": f"Active dispute {active_dispute.dispute_code or active_dispute.id} is open. Settlement is paused pending arbitration.",
+        }
+
     if escrow.status == "released":
         return {"eligible": False, "reason": "Escrow reward has already been released"}
 
@@ -117,10 +137,6 @@ def check_settlement_eligibility(db: Session, escrow_id: int) -> Dict[str, Any]:
             "eligible": False,
             "reason": f"Escrow status is '{escrow.status}'. Settlement requires status 'releasable'.",
         }
-
-    task = db.query(Task).filter(Task.id == escrow.task_id).first()
-    if not task:
-        return {"eligible": False, "reason": f"Task with id {escrow.task_id} not found"}
 
     if not task.assigned_agent_id:
         return {"eligible": False, "reason": "Task has no assigned worker agent"}
@@ -143,11 +159,9 @@ def check_settlement_eligibility(db: Session, escrow_id: int) -> Dict[str, Any]:
 
     # Verify submission integrity
     submission = None
-    # Verify submission integrity
     if verification and not getattr(verification, "integrity_valid", True):
         return {"eligible": False, "reason": "Submission package integrity validation failed"}
 
-    submission = None
     if verification.submission_id:
         submission = db.query(ResultSubmission).filter(ResultSubmission.id == verification.submission_id).first()
     else:
@@ -173,15 +187,6 @@ def check_settlement_eligibility(db: Session, escrow_id: int) -> Dict[str, Any]:
             "eligible": False,
             "reason": f"Insufficient requester locked balance ({req_wallet.locked_balance} AP < {escrow.reward_amount} AP)",
         }
-
-    # Check if a completed settlement already exists
-    existing_completed = (
-        db.query(Settlement)
-        .filter(Settlement.escrow_id == escrow_id, Settlement.status == "completed")
-        .first()
-    )
-    if existing_completed:
-        return {"eligible": False, "reason": f"Settlement {existing_completed.settlement_code} already completed for this escrow"}
 
     return {
         "eligible": True,

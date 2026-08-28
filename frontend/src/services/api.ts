@@ -1820,3 +1820,177 @@ export async function fetchHumanReviewAudit(id: number): Promise<HumanReviewAudi
   }
   return res.json();
 }
+
+// ─────────────────────────────────────────────────────────────
+// Phase 15 — Dispute Resolution System
+// ─────────────────────────────────────────────────────────────
+
+export interface DisputeEvidence {
+  id: number;
+  dispute_id: number;
+  submitted_by_type: string;
+  submitted_by_id: string | null;
+  title: string;
+  description: string;
+  evidence_data: string | null;
+  created_at: string;
+}
+
+export interface DisputeAuditLog {
+  id: number;
+  dispute_id: number;
+  action: string;
+  actor_type: string;
+  actor_id: string | null;
+  message: string | null;
+  created_at: string;
+}
+
+export interface Dispute {
+  id: number;
+  dispute_code: string | null;
+  task_id: number;
+  submission_id: number;
+  verification_id: number;
+  escrow_id: number;
+  settlement_id: number | null;
+  raised_by_type: string;
+  raised_by_id: string | null;
+  worker_agent_id: number;
+  reason: string;
+  description: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  resolved_at: string | null;
+  cancelled_at: string | null;
+  evidence_items?: DisputeEvidence[];
+  audit_logs?: DisputeAuditLog[];
+}
+
+export interface DisputeCreatePayload {
+  task_id: number;
+  reason: string;
+  description: string;
+  raised_by_type?: string;
+  raised_by_id?: string;
+  initial_evidence_title?: string;
+  initial_evidence_description?: string;
+  initial_evidence_data?: string;
+}
+
+export interface DisputeEvidenceCreatePayload {
+  title: string;
+  description: string;
+  evidence_data?: string;
+  submitted_by_type?: string;
+  submitted_by_id?: string;
+}
+
+/** GET /api/disputes */
+export async function fetchDisputes(statusFilter?: string, taskId?: number): Promise<Dispute[]> {
+  const params = new URLSearchParams();
+  if (statusFilter && statusFilter !== 'all') params.set('status', statusFilter);
+  if (taskId) params.set('task_id', String(taskId));
+  const query = params.toString() ? `?${params.toString()}` : '';
+  const res = await fetch(`${API_BASE_URL}/api/disputes${query}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || 'Failed to fetch disputes');
+  }
+  return res.json();
+}
+
+/** GET /api/disputes/:id */
+export async function fetchDispute(id: number): Promise<Dispute> {
+  const res = await fetch(`${API_BASE_URL}/api/disputes/${id}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || 'Failed to fetch dispute');
+  }
+  return res.json();
+}
+
+/** GET /api/tasks/:taskId/dispute */
+export async function fetchDisputeByTask(taskId: number): Promise<Dispute> {
+  const res = await fetch(`${API_BASE_URL}/api/tasks/${taskId}/dispute`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || 'No dispute found for this task');
+  }
+  return res.json();
+}
+
+/** POST /api/disputes */
+export async function createDispute(payload: DisputeCreatePayload): Promise<Dispute> {
+  const res = await fetch(`${API_BASE_URL}/api/disputes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || 'Failed to create dispute');
+  }
+  return res.json();
+}
+
+/** POST /api/disputes/:id/evidence */
+export async function addDisputeEvidence(id: number, payload: DisputeEvidenceCreatePayload): Promise<DisputeEvidence> {
+  const res = await fetch(`${API_BASE_URL}/api/disputes/${id}/evidence`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || 'Failed to add evidence');
+  }
+  return res.json();
+}
+
+/** POST /api/disputes/:id/ready */
+export async function markDisputeReady(id: number): Promise<Dispute> {
+  const res = await fetch(`${API_BASE_URL}/api/disputes/${id}/ready`, {
+    method: 'POST',
+    headers: { 'Accept': 'application/json' },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || 'Failed to mark dispute ready');
+  }
+  return res.json();
+}
+
+/** POST /api/disputes/:id/cancel */
+export async function cancelDispute(id: number): Promise<Dispute> {
+  const res = await fetch(`${API_BASE_URL}/api/disputes/${id}/cancel`, {
+    method: 'POST',
+    headers: { 'Accept': 'application/json' },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || 'Failed to cancel dispute');
+  }
+  return res.json();
+}
+
+/** GET /api/disputes/:id/evidence */
+export async function fetchDisputeEvidence(id: number): Promise<DisputeEvidence[]> {
+  const res = await fetch(`${API_BASE_URL}/api/disputes/${id}/evidence`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || 'Failed to fetch dispute evidence');
+  }
+  return res.json();
+}
+
+/** GET /api/disputes/:id/audit */
+export async function fetchDisputeAudit(id: number): Promise<DisputeAuditLog[]> {
+  const res = await fetch(`${API_BASE_URL}/api/disputes/${id}/audit`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || 'Failed to fetch dispute audit logs');
+  }
+  return res.json();
+}
