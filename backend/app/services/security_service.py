@@ -126,6 +126,7 @@ def suspend_agent(
 
     agent.is_suspended = True
     agent.status = "suspended"
+    agent.trust_status = "suspended"
     agent.suspension_reason = reason
     agent.risk_score = max(agent.risk_score or 0.0, 80.0)
 
@@ -161,6 +162,7 @@ def restore_agent(
 
     agent.is_suspended = False
     agent.status = "available"
+    agent.trust_status = "trusted" if (agent.total_verified_tasks or 0) >= 3 else "provisional"
     agent.suspension_reason = None
     # Lower risk to allow rehabilitation (capped at medium 40.0)
     agent.risk_score = min(agent.risk_score or 0.0, 40.0)

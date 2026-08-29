@@ -294,3 +294,90 @@
     animation: none !important;
   }
 }
+
+/* ── Touch Device: Disable 3D Tilt ─────────────────────────────────────── */
+@media (hover: none) and (pointer: coarse) {
+  .perspective-1000,
+  .perspective-1500 {
+    perspective: none;
+  }
+  .preserve-3d {
+    transform-style: flat;
+  }
+  .card-spotlight::before,
+  .card-border-glow::after {
+    display: none;
+  }
+}
+
+/* ── No Scrollbar Utility ───────────────────────────────────────────────── */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Focus Ring System ──────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid rgba(49, 85, 217, 0.6);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+button:focus-visible,
+a:focus-visible,
+select:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid rgba(49, 85, 217, 0.6);
+  outline-offset: 2px;
+}
+
+/* ── Disabled State Visibility ─────────────────────────────────────────── */
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* ── Status Badge Base ─────────────────────────────────────────────────── */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-width: 1px;
+  border-style: solid;
+  white-space: nowrap;
+  font-family: ui-monospace, monospace;
+}
+
+/* ── Truncate Utilities ─────────────────────────────────────────────────── */
+.line-clamp-1 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* ── AP Credits Disclaimer ──────────────────────────────────────────────── */
+.ap-disclaimer {
+  font-size: 0.6875rem;
+  color: #87909F;
+  font-style: italic;
+}
+
+/* ── Mobile overflow guard ──────────────────────────────────────────────── */
+* {
+  min-width: 0;
+}

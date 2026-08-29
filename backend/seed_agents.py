@@ -59,6 +59,20 @@ DEMO_AGENTS = [
         "capabilities": ["Verification", "Quality Evaluation", "NLP", "Research", "Data Analysis"],
         "status": "available",
     },
+    {
+        "name": "Arbitrator-Agent-01",
+        "agent_type": "arbitrator",
+        "description": "Independent dispute arbitrator agent. Evaluates contested verification evidence, rubric consistency, and audit trails to issue binding dispute resolutions.",
+        "capabilities": ["Arbitration", "Dispute Resolution", "Quality Evaluation"],
+        "status": "available",
+    },
+    {
+        "name": "Arbitrator-Agent-02",
+        "agent_type": "arbitrator",
+        "description": "Senior arbitration agent specialized in code security, data integrity, and contested contract disputes.",
+        "capabilities": ["Arbitration", "Dispute Resolution", "Code Analysis", "Security"],
+        "status": "available",
+    },
 ]
 
 

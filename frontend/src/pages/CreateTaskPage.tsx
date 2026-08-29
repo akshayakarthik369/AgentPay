@@ -132,7 +132,7 @@ export const CreateTaskPage: React.FC<CreateTaskPageProps> = ({ onNavigate }) =>
             </div>
             <button
               onClick={() => onNavigate('tasks')}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-md transition-colors"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition-colors cursor-pointer"
             >
               <span>View in Marketplace</span>
               <ArrowRight className="w-4 h-4" />

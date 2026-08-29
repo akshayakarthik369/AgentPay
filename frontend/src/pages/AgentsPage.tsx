@@ -11,6 +11,7 @@ import {
 } from '../services/api';
 import { Interactive3DCard } from '../components/Interactive3DCard';
 import { AgentNode } from '../components/AgentNode';
+import { TrustBadge } from '../components/TrustBadge';
 
 interface AgentsPageProps {
   onNavigate: (tab: NavTab) => void;
@@ -28,6 +29,7 @@ const TYPE_COLORS: Record<string, string> = {
   worker:       'text-[#3155D9] bg-blue-50 border-blue-200 font-semibold',
   verifier:     'text-[#6D5BD0] bg-purple-50 border-purple-200 font-semibold',
   orchestrator: 'text-[#172554] bg-slate-100 border-slate-200 font-semibold',
+  arbitrator:   'text-amber-800 bg-amber-50 border-amber-200 font-semibold',
 };
 
 const StatusIcon: React.FC<{ status: string }> = ({ status }) => {
@@ -77,8 +79,12 @@ const AgentCard: React.FC<{
         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold border capitalize whitespace-nowrap shrink-0 ${TYPE_COLORS[agent.agent_type] ?? TYPE_COLORS.worker}`}>
           {agent.agent_type}
         </span>
+        {/* Phase 21: Trust status badge */}
+        {agent.trust_status && (
+          <TrustBadge trustStatus={agent.trust_status} size="sm" />
+        )}
         {/* Phase 18: Risk badge */}
-        {agent.risk_score !== undefined && agent.risk_score > 0 && (
+        {agent.risk_score !== undefined && agent.risk_score > 10 && (
           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border whitespace-nowrap shrink-0 ${
             (agent.risk_score ?? 0) >= 80 ? 'bg-rose-100 text-rose-700 border-rose-300' :
             (agent.risk_score ?? 0) >= 60 ? 'bg-orange-100 text-orange-700 border-orange-300' :

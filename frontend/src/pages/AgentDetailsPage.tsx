@@ -4,7 +4,8 @@ import {
   CheckCircle2, XCircle, Clock, Star, Wallet,
   Award, ChevronRight, Zap, ShieldCheck, ToggleLeft, ToggleRight,
   Sparkles, Info, Send, Edit3, Trash2, TrendingUp, TrendingDown, BarChart3,
-  Shield, ShieldOff, Ban, RotateCcw, AlertOctagon
+  Shield, ShieldOff, Ban, RotateCcw, AlertOctagon, FlaskConical, Loader2,
+  ShieldAlert, CheckSquare, PlayCircle, Lock, Unlock
 } from 'lucide-react';
 import { NavTab } from '../components/Navbar';
 import {
@@ -13,13 +14,15 @@ import {
   fetchAgentReputation, fetchAgentReputationHistory,
   fetchAgentActivity,
   fetchAgentSecurity, suspendAgent, restoreAgent,
+  fetchAgentTrustReport, runCanaryBenchmark, promoteAgent,
   ApiAgent, TaskMatchResult, ApiBid, TaskSummaryForMatch,
   ReputationBreakdown, ReputationEvent, ActivityEvent,
-  AgentSecuritySummary, SecurityEvent
+  AgentSecuritySummary, SecurityEvent, AgentTrustReport, CanaryTest
 } from '../services/api';
 import { MatchScoreCard, MATCH_LEVEL_STYLES } from '../components/MatchScoreCard';
 import { SubmitBidModal } from '../components/SubmitBidModal';
 import { EditBidModal } from '../components/EditBidModal';
+import { TrustBadge } from '../components/TrustBadge';
 
 interface AgentDetailsPageProps {
   agentId: number;
@@ -37,6 +40,7 @@ const TYPE_BADGE: Record<string, string> = {
   worker:       'text-[#3155D9]    bg-blue-50    border-blue-200',
   verifier:     'text-[#6D5BD0]  bg-purple-50  border-purple-200',
   orchestrator: 'text-[#1E3A8A]  bg-slate-100  border-slate-200',
+  arbitrator:   'text-amber-800  bg-amber-50   border-amber-200',
 };
 
 const BID_STATUS_STYLES: Record<string, { badge: string }> = {
@@ -95,6 +99,13 @@ export const AgentDetailsPage: React.FC<AgentDetailsPageProps> = ({ agentId, onN
   const [securityActionBusy, setSecurityActionBusy] = useState(false);
   const [securityActionError, setSecurityActionError] = useState<string | null>(null);
 
+  // Phase 21: Canary & Trust Lifecycle
+  const [trustReport, setTrustReport] = useState<AgentTrustReport | null>(null);
+  const [trustLoading, setTrustLoading] = useState(false);
+  const [canaryBusy, setCanaryBusy] = useState(false);
+  const [promoteBusy, setPromoteBusy] = useState(false);
+  const [canaryMsg, setCanaryMsg] = useState<string | null>(null);
+
   // Modals state
   const [selectedMatch, setSelectedMatch] = useState<TaskMatchResult | null>(null);
   const [bidModalTask, setBidModalTask] = useState<{ task: TaskSummaryForMatch; matchScore: number } | null>(null);
@@ -142,6 +153,13 @@ export const AgentDetailsPage: React.FC<AgentDetailsPageProps> = ({ agentId, onN
         .then((sp) => setSecurityProfile(sp))
         .catch(() => {})
         .finally(() => setSecurityLoading(false));
+
+      // Phase 21: Load trust report
+      setTrustLoading(true);
+      fetchAgentTrustReport(agentId)
+        .then((tr) => setTrustReport(tr))
+        .catch(() => {})
+        .finally(() => setTrustLoading(false));
     } catch (e: any) {
       setError(e.message ?? 'Failed to load agent');
     } finally {
@@ -241,7 +259,7 @@ export const AgentDetailsPage: React.FC<AgentDetailsPageProps> = ({ agentId, onN
                     {agent.agent_type}
                   </span>
                   {!agent.is_active && (
-                    <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold border border-slate-600 text-[#87909F] bg-slate-800">
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold border border-slate-300 text-slate-600 bg-slate-100">
                       Inactive
                     </span>
                   )}
@@ -850,6 +868,188 @@ export const AgentDetailsPage: React.FC<AgentDetailsPageProps> = ({ agentId, onN
             </div>
           ) : (
             <div className="text-center py-6 text-[#87909F] text-xs font-mono">No security profile available.</div>
+          )}
+        </div>
+
+        {/* ============================================================ */}
+        {/* Phase 21: Canary Testing & Trust Lifecycle Panel              */}
+        {/* ============================================================ */}
+        <div className="glass-panel rounded-2xl border border-slate-200 p-6">
+          <div className="flex items-center justify-between gap-4 mb-5 pb-3 border-b border-slate-200">
+            <div className="flex items-center gap-2">
+              <FlaskConical className="w-4 h-4 text-violet-500" />
+              <h2 className="font-bold text-[#18202F] text-sm sm:text-base">Canary Testing &amp; Trust Lifecycle</h2>
+            </div>
+            {trustReport && <TrustBadge trustStatus={trustReport.trust_status} size="md" />}
+          </div>
+
+          {trustLoading ? (
+            <div className="text-center py-6 text-[#87909F] text-xs font-mono flex items-center justify-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" /> Loading trust report...
+            </div>
+          ) : trustReport ? (
+            <div className="space-y-6">
+
+              {/* Trust Status Summary */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 flex flex-col gap-0.5">
+                  <span className="text-[10px] font-semibold text-[#87909F] uppercase tracking-wider">Trust Status</span>
+                  <span className="font-bold text-[#18202F] text-sm">{trustReport.trust_label}</span>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 flex flex-col gap-0.5">
+                  <span className="text-[10px] font-semibold text-[#87909F] uppercase tracking-wider">Canary</span>
+                  <span className={`font-bold text-sm ${trustReport.canary_passed ? 'text-emerald-700' : 'text-rose-700'}`}>
+                    {trustReport.canary_passed ? 'PASSED' : `${trustReport.canary_attempts} / ${trustReport.max_canary_attempts} attempts`}
+                  </span>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 flex flex-col gap-0.5">
+                  <span className="text-[10px] font-semibold text-[#87909F] uppercase tracking-wider">Verified Tasks</span>
+                  <span className="font-bold text-[#18202F] text-sm">{trustReport.total_verified_tasks}</span>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 flex flex-col gap-0.5">
+                  <span className="text-[10px] font-semibold text-[#87909F] uppercase tracking-wider">Reward Cap</span>
+                  <span className="font-bold text-[#18202F] text-sm">
+                    {trustReport.max_allowed_reward === null ? 'Unlimited' : `${trustReport.max_allowed_reward} AP`}
+                  </span>
+                </div>
+              </div>
+
+              {/* Promotion Progress (shown for provisional) */}
+              {trustReport.is_provisional && trustReport.promotion_progress && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <TrendingUp className="w-4 h-4 text-amber-600" />
+                    <span className="font-semibold text-amber-800 text-sm">Promotion Progress to Trusted</span>
+                  </div>
+                  <div className="space-y-2">
+                    {[
+                      { label: 'Verified Tasks', current: trustReport.promotion_progress.current_verified_tasks, required: trustReport.promotion_progress.required_verified_tasks, met: trustReport.promotion_progress.verified_tasks_met },
+                      { label: 'Reputation Score', current: trustReport.promotion_progress.current_reputation.toFixed(1), required: trustReport.promotion_progress.required_reputation, met: trustReport.promotion_progress.reputation_met },
+                    ].map(({ label, current, required, met }) => (
+                      <div key={label} className="flex items-center justify-between gap-2 text-sm">
+                        <span className="text-amber-800 font-medium">{label}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-amber-900">{current} / {required}</span>
+                          {met
+                            ? <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                            : <XCircle className="w-4 h-4 text-rose-500" />}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {trustReport.promotion_progress.eligible_for_promotion && (
+                    <div className="mt-3">
+                      <button
+                        onClick={async () => {
+                          setPromoteBusy(true); setCanaryMsg(null);
+                          try {
+                            const r = await promoteAgent(agentId);
+                            setCanaryMsg(r.promoted ? `✓ Promoted to ${r.new_status}!` : r.reason);
+                            await fetchAgentTrustReport(agentId).then(setTrustReport).catch(() => {});
+                          } catch (e: any) { setCanaryMsg(`Error: ${e.message}`); }
+                          finally { setPromoteBusy(false); }
+                        }}
+                        disabled={promoteBusy}
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-violet-300 text-violet-700 bg-violet-50 hover:bg-violet-100 transition-all disabled:opacity-50"
+                      >
+                        {promoteBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <TrendingUp className="w-4 h-4" />}
+                        Evaluate Promotion
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Canary Test History */}
+              {trustReport.recent_canary_tests.length > 0 && (
+                <div>
+                  <h3 className="text-xs font-semibold text-[#596273] uppercase tracking-wider mb-3">Canary Test History</h3>
+                  <div className="space-y-2">
+                    {trustReport.recent_canary_tests.map((ct) => (
+                      <div key={ct.id} className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm ${
+                        ct.status === 'passed' ? 'border-emerald-200 bg-emerald-50' :
+                        ct.status === 'failed' ? 'border-rose-200 bg-rose-50' :
+                        'border-slate-200 bg-slate-50'
+                      }`}>
+                        <div className="flex items-center gap-2">
+                          {ct.status === 'passed'
+                            ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                            : ct.status === 'failed'
+                            ? <XCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                            : <Clock className="w-4 h-4 text-amber-500 shrink-0" />}
+                          <div>
+                            <p className="font-semibold text-[#18202F]">
+                              {ct.canary_code ?? `CT-${ct.id}`}
+                              <span className="ml-2 text-[10px] font-mono text-[#87909F] uppercase">Attempt #{ct.attempt_number}</span>
+                            </p>
+                            {ct.failure_reason && <p className="text-xs text-rose-700 mt-0.5">{ct.failure_reason}</p>}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className={`font-bold font-mono ${ct.status === 'passed' ? 'text-emerald-700' : ct.status === 'failed' ? 'text-rose-700' : 'text-[#596273]'}`}>
+                            {ct.score !== undefined ? `${ct.score.toFixed(1)}` : '—'}
+                          </p>
+                          <p className="text-[10px] text-[#87909F]">/ {ct.required_score}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Canary Action Buttons */}
+              <div className="flex flex-wrap gap-3 pt-1">
+                {canaryMsg && (
+                  <div className="w-full rounded-xl border border-violet-200 bg-violet-50 px-4 py-2 text-sm text-violet-800 font-medium">
+                    {canaryMsg}
+                  </div>
+                )}
+                {/* Run Canary — only shown when agent is pending/failed */}
+                {(trustReport.trust_status === 'pending_canary' || trustReport.trust_status === 'canary_failed') && (
+                  <>
+                    <button
+                      onClick={async () => {
+                        setCanaryBusy(true); setCanaryMsg(null);
+                        try {
+                          const ct = await runCanaryBenchmark(agentId, { force_pass: true });
+                          setCanaryMsg(`Canary forced-pass: score ${ct.score?.toFixed(1)} ✓`);
+                          await fetchAgentTrustReport(agentId).then(setTrustReport).catch(() => {});
+                          const updatedAgent = await fetchAgentById(agentId);
+                          setAgent(updatedAgent);
+                        } catch (e: any) { setCanaryMsg(`Error: ${e.message}`); }
+                        finally { setCanaryBusy(false); }
+                      }}
+                      disabled={canaryBusy}
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-emerald-300 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-all disabled:opacity-50"
+                    >
+                      {canaryBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <PlayCircle className="w-4 h-4" />}
+                      Run Canary (Simulate Pass)
+                    </button>
+                    <button
+                      onClick={async () => {
+                        setCanaryBusy(true); setCanaryMsg(null);
+                        try {
+                          const ct = await runCanaryBenchmark(agentId, { force_fail: true });
+                          setCanaryMsg(`Canary forced-fail: score ${ct.score?.toFixed(1)} — ${ct.failure_reason ?? 'failed'}`);
+                          await fetchAgentTrustReport(agentId).then(setTrustReport).catch(() => {});
+                          const updatedAgent = await fetchAgentById(agentId);
+                          setAgent(updatedAgent);
+                        } catch (e: any) { setCanaryMsg(`Error: ${e.message}`); }
+                        finally { setCanaryBusy(false); }
+                      }}
+                      disabled={canaryBusy}
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-rose-200 text-rose-700 bg-rose-50 hover:bg-rose-100 transition-all disabled:opacity-50"
+                    >
+                      {canaryBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <FlaskConical className="w-4 h-4" />}
+                      Run Canary (Simulate Fail)
+                    </button>
+                  </>
+                )}
+              </div>
+
+            </div>
+          ) : (
+            <div className="text-center py-6 text-[#87909F] text-xs font-mono">No trust report available.</div>
           )}
         </div>
 

@@ -173,6 +173,17 @@ def calculate_availability_score_and_eligibility(agent: Agent, task: Task) -> Tu
         eligible = False
         reasons.append(f"Agent has unknown status '{agent.status}'")
 
+    # Phase 21: Trust status check
+    from app.config.trust import TRUST_BLOCKED_STATUSES, TRUST_STATUS_PROVISIONAL, PROVISIONAL_MAX_REWARD
+    agent_trust = getattr(agent, "trust_status", "trusted")
+    if agent_trust in TRUST_BLOCKED_STATUSES:
+        avail_score = 0.0
+        eligible = False
+        reasons.append(f"Agent is in '{agent_trust}' trust status (must pass Canary benchmark)")
+    elif agent_trust == TRUST_STATUS_PROVISIONAL and (task.reward or 0.0) > PROVISIONAL_MAX_REWARD:
+        eligible = False
+        reasons.append(f"Provisional trust tier capped at {PROVISIONAL_MAX_REWARD:.0f} AP (task reward: {task.reward:.0f} AP)")
+
     # 3. Task status & expiration
     task_status_lower = _normalize_str(task.status)
     if task_status_lower != "open":

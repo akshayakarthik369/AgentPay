@@ -24,15 +24,17 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
 
         {/* Prototype Navigation Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-8 gap-y-2 text-xs text-slate-400">
-          <button onClick={() => onNavigate('home')} className="text-left hover:text-white transition-colors">Home</button>
-          <button onClick={() => onNavigate('client-dashboard')} className="text-left hover:text-white transition-colors">Client Dashboard</button>
-          <button onClick={() => onNavigate('create-task')} className="text-left hover:text-white transition-colors">Create Task</button>
-          <button onClick={() => onNavigate('tasks')} className="text-left hover:text-white transition-colors">Marketplace</button>
-          <button onClick={() => onNavigate('agent-dashboard')} className="text-left hover:text-white transition-colors">Agent Dashboard</button>
-          <button onClick={() => onNavigate('wallet')} className="text-left hover:text-white transition-colors">Wallet & Escrow</button>
-          <button onClick={() => onNavigate('verification')} className="text-left hover:text-white transition-colors">Verification</button>
-          <button onClick={() => onNavigate('reputation')} className="text-left hover:text-white transition-colors">Reputation</button>
-          <button onClick={() => onNavigate('disputes')} className="text-left hover:text-white transition-colors">Disputes</button>
+          <button onClick={() => onNavigate('home')} className="text-left hover:text-white transition-colors cursor-pointer">Home</button>
+          <button onClick={() => onNavigate('client-dashboard')} className="text-left hover:text-white transition-colors cursor-pointer">Client Dashboard</button>
+          <button onClick={() => onNavigate('create-task')} className="text-left hover:text-white transition-colors cursor-pointer">Create Task</button>
+          <button onClick={() => onNavigate('tasks')} className="text-left hover:text-white transition-colors cursor-pointer">Marketplace</button>
+          <button onClick={() => onNavigate('agents')} className="text-left hover:text-white transition-colors cursor-pointer">Agent Directory</button>
+          <button onClick={() => onNavigate('agent-dashboard')} className="text-left hover:text-white transition-colors cursor-pointer">Agent Console</button>
+          <button onClick={() => onNavigate('wallet')} className="text-left hover:text-white transition-colors cursor-pointer">Wallet & Escrow</button>
+          <button onClick={() => onNavigate('verification')} className="text-left hover:text-white transition-colors cursor-pointer">Verification</button>
+          <button onClick={() => onNavigate('reputation')} className="text-left hover:text-white transition-colors cursor-pointer">Reputation</button>
+          <button onClick={() => onNavigate('disputes')} className="text-left hover:text-white transition-colors cursor-pointer">Human Review & Arbitration</button>
+          <button onClick={() => onNavigate('activity')} className="text-left hover:text-white transition-colors cursor-pointer">Activity Stream</button>
         </div>
 
         {/* Tech Stack Info */}
@@ -50,7 +52,11 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
       </div>
 
       <div className="max-w-7xl mx-auto pt-8 mt-8 border-t border-slate-800/80 flex flex-col sm:flex-row justify-between items-center text-[11px] text-slate-400 gap-4">
-        <p>© 2026 AgentPay. Autonomous AI Agent Economy UI Prototype.</p>
+        <div className="flex flex-col sm:flex-row items-center gap-2">
+          <p>© 2026 AgentPay. Autonomous AI Agent Economy Platform.</p>
+          <span className="hidden sm:inline text-slate-600">·</span>
+          <span className="text-slate-500 font-mono">AP Credits are simulated platform credits.</span>
+        </div>
         <p className="font-mono text-slate-400">CSI Origins Hackathon Project</p>
       </div>
     </footer>

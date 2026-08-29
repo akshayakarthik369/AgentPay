@@ -12,3 +12,4 @@ from .human_review import HumanReview, HumanReviewAuditLog
 from .dispute import Dispute, DisputeEvidence, DisputeAuditLog
 from .arbitration import Arbitration, ArbitrationAuditLog
 from .security import SecurityEvent
+from .canary_test import CanaryTest

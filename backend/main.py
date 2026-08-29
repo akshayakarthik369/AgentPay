@@ -39,6 +39,7 @@ from app.routers.disputes import router as disputes_router
 from app.routers.arbitrations import router as arbitrations_router
 from app.routers.history import router as history_router
 from app.routers.security import router as security_router
+from app.routers.canary import router as canary_router
 
 # Import services
 from app.services.task_service import get_dashboard_metrics
@@ -110,6 +111,7 @@ app.include_router(disputes_router)
 app.include_router(arbitrations_router)
 app.include_router(history_router)
 app.include_router(security_router)
+app.include_router(canary_router)
 
 
 # ---------------------------------------------------------------------------

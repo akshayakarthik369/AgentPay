@@ -27,7 +27,7 @@ def get_or_create_requester_wallet(db: Session, seed_amount: float = 5000.0) -> 
         db.add(wallet)
         db.flush()
         db.refresh(wallet)
-    elif wallet.available_balance < 1000.0:
+    elif (wallet.available_balance + wallet.locked_balance) <= 0.0:
         wallet.available_balance += seed_amount
         wallet.updated_at = datetime.utcnow()
         db.flush()

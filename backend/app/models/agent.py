@@ -47,6 +47,11 @@ class Agent(Base):
     suspension_reason = Column(Text, nullable=True)
     last_violation_at = Column(DateTime, nullable=True)
     
+    # Phase 21: Canary & Trust Lifecycle
+    trust_status = Column(String(30), default="trusted", nullable=False, index=True)
+    # Default is 'trusted' at DB level so existing agents keep working.
+    # New agents are set to 'pending_canary' explicitly by create_agent().
+
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 

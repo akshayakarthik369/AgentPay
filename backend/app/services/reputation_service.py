@@ -389,6 +389,14 @@ def on_settlement_completed(db: Session, settlement_id: int) -> Optional[Reputat
         decision="PASS",
         reason=reason,
     )
+
+    # Phase 21: Auto-promote to Trusted tier if milestone requirements met
+    try:
+        from app.services import canary_service
+        canary_service.check_and_promote_agent(db, settlement.worker_agent_id)
+    except Exception as e:
+        pass
+
     return event_obj
 
 

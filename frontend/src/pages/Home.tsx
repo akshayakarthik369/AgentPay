@@ -47,7 +47,7 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
     { step: '03', title: 'Compete',  desc: 'Objective 4-factor competitive bid ranking', icon: <Users className="w-4 h-4 text-[#3155D9]" />, color: 'blue' as const },
     { step: '04', title: 'Execute',  desc: 'Selected agent runs autonomous workflow', icon: <Cpu className="w-4 h-4 text-[#6D5BD0]" />, color: 'violet' as const },
     { step: '05', title: 'Verify',   desc: 'Independent SHA-256 cryptographic audit', icon: <ShieldCheck className="w-4 h-4 text-[#15805F]" />, color: 'emerald' as const },
-    { step: '06', title: 'Settle',   desc: 'Verified outcomes trigger programmable settlement', icon: <Coins className="w-4 h-4 text-amber-700" />, color: 'gold' as const, isNext: true },
+    { step: '06', title: 'Settle',   desc: 'Verified outcomes trigger programmable settlement', icon: <Coins className="w-4 h-4 text-amber-700" />, color: 'gold' as const },
   ];
 
   const trustPrinciples = [
@@ -66,7 +66,7 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
         <div className="space-y-8">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-200/80 text-xs font-mono text-[#3155D9]">
             <span className="w-1.5 h-1.5 rounded-full bg-[#3155D9] animate-pulse" />
-            <span>AUTONOMOUS AGENT ECONOMY — Phase 10 Verified</span>
+            <span>AUTONOMOUS AGENT ECONOMY — Phase 18 Operational</span>
           </div>
 
           <div className="space-y-4">
@@ -130,10 +130,10 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
           {[
-            { label: 'Active Agents',    value: agents.length || 6,                       color: 'text-[#172554]',   icon: <Bot className="w-4 h-4 text-[#3155D9]" />,        glow: 'blue' as const },
-            { label: 'Open Tasks',       value: stats?.open_tasks || recentTasks.length || 8, color: 'text-[#3155D9]', icon: <Layers className="w-4 h-4 text-[#172554]" />,   glow: 'navy' as const },
-            { label: 'Total Rewards',    value: `${stats?.total_rewards || 1250} AP`,     color: 'text-amber-800',  icon: <Coins className="w-4 h-4 text-amber-600" />,     glow: 'gold' as const },
-            { label: 'Categories',       value: stats?.active_categories || 5,            color: 'text-emerald-800', icon: <CheckCircle2 className="w-4 h-4 text-emerald-600" />, glow: 'emerald' as const },
+            { label: 'Active Agents',    value: stats ? agents.length : '—',                       color: 'text-[#172554]',   icon: <Bot className="w-4 h-4 text-[#3155D9]" />,        glow: 'blue' as const },
+            { label: 'Open Tasks',       value: stats?.open_tasks ?? '—',                           color: 'text-[#3155D9]',  icon: <Layers className="w-4 h-4 text-[#172554]" />,   glow: 'navy' as const },
+            { label: 'Total Rewards',    value: stats ? `${stats.total_rewards.toLocaleString()} AP` : '—', color: 'text-amber-800',  icon: <Coins className="w-4 h-4 text-amber-600" />,     glow: 'gold' as const },
+            { label: 'Categories',       value: stats?.active_categories ?? '—',                   color: 'text-emerald-800', icon: <CheckCircle2 className="w-4 h-4 text-emerald-600" />, glow: 'emerald' as const },
           ].map(s => (
             <Interactive3DCard key={s.label} level="interactive" glowColor={s.glow} className="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm">
               <div className="flex justify-between items-start mb-3">
@@ -168,11 +168,6 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
               </div>
               <h3 className="font-bold text-[#18202F] text-sm mb-1">{s.title}</h3>
               <p className="text-xs text-[#596273] leading-relaxed">{s.desc}</p>
-              {s.isNext && (
-                <span className="inline-block mt-3 text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
-                  NEXT PHASE
-                </span>
-              )}
             </Interactive3DCard>
           ))}
         </div>

@@ -250,7 +250,7 @@ export const MarketplacePage: React.FC<MarketplacePageProps> = ({ onNavigate, on
         </div>
         <button
           onClick={() => onNavigate('create-task')}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#172554] via-[#1E3A8A] to-[#3155D9] hover:brightness-110 text-[#18202F] font-semibold text-sm shadow-md transition-all shrink-0"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#172554] via-[#1E3A8A] to-[#3155D9] hover:brightness-110 text-white font-semibold text-sm shadow-md transition-all shrink-0"
         >
           <PlusCircle className="w-4 h-4" />
           <span>Post New Task</span>

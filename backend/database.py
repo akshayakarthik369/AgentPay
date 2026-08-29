@@ -89,6 +89,9 @@ def run_migrations():
                     conn.execute(text("ALTER TABLE agents ADD COLUMN suspension_reason TEXT"))
                 if "last_violation_at" not in existing_columns:
                     conn.execute(text("ALTER TABLE agents ADD COLUMN last_violation_at DATETIME"))
+                # Phase 21: Canary & Trust Lifecycle
+                if "trust_status" not in existing_columns:
+                    conn.execute(text("ALTER TABLE agents ADD COLUMN trust_status VARCHAR(30) DEFAULT 'trusted'"))
                 conn.commit()
         except Exception as e:
             print(f"Migration note (agents): {e}")

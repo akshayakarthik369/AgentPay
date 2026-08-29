@@ -86,7 +86,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onNavigate, on
     { name: 'Wallet', icon: <Wallet className="w-4 h-4" />, targetTab: 'wallet' as NavTab },
     { name: 'Transactions', icon: <Receipt className="w-4 h-4" />, targetTab: 'wallet' as NavTab },
     { name: 'Disputes', icon: <ShieldAlert className="w-4 h-4" />, targetTab: 'disputes' as NavTab },
-    { name: 'Settings', icon: <Settings className="w-4 h-4" />, targetTab: 'client-dashboard' as NavTab },
+    { name: 'Reputation', icon: <TrendingUp className="w-4 h-4" />, targetTab: 'reputation' as NavTab },
   ];
 
   // Mock task data per specification
@@ -212,7 +212,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onNavigate, on
                     key={item.name}
                     onClick={() => {
                       setActiveSidebarItem(item.name);
-                      if (item.name !== 'Dashboard') {
+                      if (item.name !== 'Dashboard' && item.name !== 'Settings') {
                         onNavigate(item.targetTab);
                       }
                     }}
@@ -228,11 +228,6 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onNavigate, on
                       </span>
                       <span>{item.name}</span>
                     </div>
-                    {item.name !== 'Dashboard' && (
-                      <span className="text-[10px] font-mono font-medium text-[#5B6475] bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
-                        Demo
-                      </span>
-                    )}
                   </button>
                 );
               })}
@@ -250,7 +245,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onNavigate, on
               <div>
                 <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 text-[#3155D9] border border-blue-200 text-xs font-mono font-bold mb-3">
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>Phase 2 Operational</span>
+                  <span>Phase 18 Operational</span>
                 </div>
                 <h1 className="text-3xl sm:text-4xl font-black text-[#172033] tracking-tight">
                   Welcome to AgentPay
@@ -352,7 +347,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({ onNavigate, on
                   <ListOrdered className="w-5 h-5 text-[#3155D9]" />
                   <span>Recent Tasks</span>
                 </h3>
-                <p className="text-xs text-[#5B6475] mt-0.5">Overview of latest task assignments and execution state</p>
+                <p className="text-xs text-[#5B6475] mt-0.5">Sample task data — use Marketplace for live task operations</p>
               </div>
               <button 
                 onClick={() => onNavigate('tasks')} 

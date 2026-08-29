@@ -126,7 +126,7 @@ export const VerificationPage: React.FC<VerificationPageProps> = ({
     <div className="max-w-6xl mx-auto py-8 px-4 sm:px-6 space-y-8">
       
       {/* Protocol Banner */}
-      <div className="glass-panel p-6 rounded-3xl border border-blue-200 bg-gradient-to-r from-cyan-950/40 via-slate-900/60 to-purple-950/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="glass-panel p-6 rounded-3xl border border-slate-200 bg-gradient-to-r from-blue-50/60 via-white to-purple-50/60 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center shrink-0">
             <ShieldCheck className="w-6 h-6 text-[#3155D9]" />
@@ -177,16 +177,16 @@ export const VerificationPage: React.FC<VerificationPageProps> = ({
         <div className="flex items-center gap-2">
           <button
             onClick={() => setActiveView('queue')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all cursor-pointer ${
               activeView === 'queue'
-                ? 'bg-cyan-500 text-slate-950 shadow-lg shadow-cyan-500/20'
-                : 'bg-white text-[#596273] hover:text-white border border-slate-200'
+                ? 'bg-[#172554] text-white shadow-sm'
+                : 'bg-white text-[#596273] hover:text-[#18202F] border border-slate-200 hover:bg-slate-50'
             }`}
           >
             <FileCheck className="w-4 h-4" />
             <span>Pending Queue</span>
             <span className={`px-2 py-0.5 rounded-full text-xs font-mono ${
-              activeView === 'queue' ? 'bg-slate-50/20 text-slate-950 font-bold' : 'bg-slate-800 text-[#3155D9]'
+              activeView === 'queue' ? 'bg-white/20 text-white font-bold' : 'bg-slate-100 text-[#3155D9]'
             }`}>
               {pendingSubmissions.length}
             </span>
@@ -194,16 +194,16 @@ export const VerificationPage: React.FC<VerificationPageProps> = ({
 
           <button
             onClick={() => setActiveView('history')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all cursor-pointer ${
               activeView === 'history'
-                ? 'bg-cyan-500 text-slate-950 shadow-lg shadow-cyan-500/20'
-                : 'bg-white text-[#596273] hover:text-white border border-slate-200'
+                ? 'bg-[#172554] text-white shadow-sm'
+                : 'bg-white text-[#596273] hover:text-[#18202F] border border-slate-200 hover:bg-slate-50'
             }`}
           >
             <History className="w-4 h-4" />
             <span>Verification Dossiers</span>
             <span className={`px-2 py-0.5 rounded-full text-xs font-mono ${
-              activeView === 'history' ? 'bg-slate-50/20 text-slate-950 font-bold' : 'bg-slate-800 text-[#596273]'
+              activeView === 'history' ? 'bg-white/20 text-white font-bold' : 'bg-slate-100 text-[#596273]'
             }`}>
               {verifications.length}
             </span>
@@ -267,7 +267,7 @@ export const VerificationPage: React.FC<VerificationPageProps> = ({
                           onNavigate('submission-details');
                         }
                       }}
-                      className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-[#334155] text-xs font-medium flex items-center gap-1 transition"
+                      className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#18202F] text-xs font-semibold flex items-center gap-1.5 transition border border-slate-200 cursor-pointer"
                     >
                       <Layers className="w-3.5 h-3.5 text-[#6D5BD0]" />
                       <span>Inspect Submission</span>
@@ -276,17 +276,17 @@ export const VerificationPage: React.FC<VerificationPageProps> = ({
                     <button
                       onClick={() => handleStartAndRun(sub.id)}
                       disabled={processingId === sub.id}
-                      className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-md shadow-cyan-500/20 transition disabled:opacity-50"
+                      className="px-4 py-1.5 rounded-xl bg-[#172554] hover:bg-[#1E3A8A] text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition disabled:opacity-50 cursor-pointer"
                     >
                       {processingId === sub.id ? (
                         <>
                           <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                          <span>Verifying...</span>
+                          <span>Auditing...</span>
                         </>
                       ) : (
                         <>
-                          <Sparkles className="w-3.5 h-3.5" />
-                          <span>Start Verification</span>
+                          <ShieldCheck className="w-3.5 h-3.5 text-blue-300" />
+                          <span>Run Verifier Audit</span>
                         </>
                       )}
                     </button>

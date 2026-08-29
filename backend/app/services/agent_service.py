@@ -6,13 +6,18 @@ from app.schemas.agent import AgentCreate, AgentUpdate
 
 def create_agent(db: Session, data: AgentCreate) -> Agent:
     """Insert a new Agent into SQLite."""
+    # Requesters and Arbitrators default to trusted, worker/verifier default to pending_canary unless specified
+    default_trust = "trusted" if data.agent_type in ("requester", "arbitrator") else "pending_canary"
+    initial_trust = data.trust_status if data.trust_status is not None else default_trust
+
     agent = Agent(
         name=data.name,
         agent_type=data.agent_type,
         description=data.description,
         capabilities=data.capabilities,
         status=data.status or "available",
-        reputation_score=80,
+        trust_status=initial_trust,
+        reputation_score=80 if initial_trust == "trusted" else 55.0,
         wallet_balance=0.0,
         tasks_completed=0,
         success_rate=0.0,
@@ -34,7 +39,8 @@ def get_agents(
     status: Optional[str] = None,
     capability: Optional[str] = None,
     is_active: Optional[bool] = None,
-    search: Optional[str] = None
+    search: Optional[str] = None,
+    trust_status: Optional[str] = None,
 ) -> List[Agent]:
     """Retrieve agents with optional filtering and search."""
     query = db.query(Agent)
@@ -45,6 +51,8 @@ def get_agents(
         query = query.filter(Agent.status == status.strip().lower())
     if is_active is not None:
         query = query.filter(Agent.is_active == is_active)
+    if trust_status:
+        query = query.filter(Agent.trust_status == trust_status.strip().lower())
         
     agents = query.all()
     

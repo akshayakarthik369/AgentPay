@@ -232,6 +232,9 @@ export interface ApiAgent {
   is_suspended?: boolean;
   suspension_reason?: string | null;
   last_violation_at?: string | null;
+  // Phase 21: Canary & Trust Lifecycle
+  trust_status?: string;
+  is_provisional?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -345,7 +348,9 @@ export async function fetchAgents(params?: AgentFilterParams): Promise<ApiAgent[
   if (params?.status && params.status !== 'All') query.set('status', params.status);
   if (params?.agent_type && params.agent_type !== 'All') query.set('agent_type', params.agent_type);
   if (params?.capability && params.capability !== 'All') query.set('capability', params.capability);
-  if (params?.is_active !== undefined) query.set('is_active', String(params.is_active));
+  // Always filter to active agents only, unless caller explicitly sets is_active=false
+  const isActive = params?.is_active !== undefined ? params.is_active : true;
+  query.set('is_active', String(isActive));
 
   const qs = query.toString();
   const url = `${API_BASE_URL}/api/agents${qs ? `?${qs}` : ''}`;
@@ -2280,6 +2285,125 @@ export async function restoreAgent(agentId: number, reason = 'Administrative cle
   if (!res.ok) {
     const err = await res.json().catch(() => null);
     throw new Error(err?.detail || `Failed to restore agent #${agentId}`);
+  }
+  return res.json();
+}
+
+// ---------------------------------------------------------------------------
+// Phase 21: Canary Testing & Trust Lifecycle API
+// ---------------------------------------------------------------------------
+
+export interface CanaryTest {
+  id: number;
+  canary_code?: string;
+  agent_id: number;
+  test_type: string;
+  required_capability: string;
+  attempt_number: number;
+  status: 'pending' | 'running' | 'passed' | 'failed';
+  score?: number;
+  required_score: number;
+  integrity_passed?: boolean;
+  policy_passed?: boolean;
+  execution_passed?: boolean;
+  result_summary?: string;
+  failure_reason?: string;
+  created_at: string;
+  started_at?: string;
+  completed_at?: string;
+}
+
+export interface PromotionProgress {
+  current_verified_tasks: number;
+  required_verified_tasks: number;
+  verified_tasks_met: boolean;
+  current_reputation: number;
+  required_reputation: number;
+  reputation_met: boolean;
+  current_risk_score: number;
+  max_risk_score: number;
+  risk_met: boolean;
+  eligible_for_promotion: boolean;
+}
+
+export interface AgentTrustReport {
+  agent_id: number;
+  agent_code?: string;
+  agent_name: string;
+  agent_type: string;
+  trust_status: string;
+  trust_label: string;
+  is_provisional: boolean;
+  canary_passed: boolean;
+  canary_attempts: number;
+  max_canary_attempts: number;
+  last_canary_score?: number;
+  reputation_score: number;
+  total_verified_tasks: number;
+  risk_score: number;
+  max_allowed_reward?: number | null;
+  promotion_progress: PromotionProgress;
+  recent_canary_tests: CanaryTest[];
+}
+
+export interface PromotionCheckResponse {
+  agent_id: number;
+  promoted: boolean;
+  previous_status: string;
+  new_status: string;
+  reason: string;
+  criteria_met: Record<string, boolean>;
+}
+
+/** POST /api/canary/run/{agent_id} — Run canary benchmark for agent */
+export async function runCanaryBenchmark(
+  agentId: number,
+  options?: { force_pass?: boolean; force_fail?: boolean; test_type?: string }
+): Promise<CanaryTest> {
+  const res = await fetch(`${API_BASE_URL}/api/canary/run/${agentId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify(options || {}),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || `Canary benchmark failed for agent #${agentId}`);
+  }
+  return res.json();
+}
+
+/** GET /api/canary/tests — List canary tests */
+export async function fetchCanaryTests(params?: { agent_id?: number; status?: string; limit?: number }): Promise<CanaryTest[]> {
+  const q = new URLSearchParams();
+  if (params?.agent_id) q.set('agent_id', params.agent_id.toString());
+  if (params?.status) q.set('status', params.status);
+  if (params?.limit) q.set('limit', params.limit.toString());
+  const qs = q.toString();
+  const res = await fetch(`${API_BASE_URL}/api/canary/tests${qs ? `?${qs}` : ''}`, {
+    headers: { 'Accept': 'application/json' },
+  });
+  if (!res.ok) throw new Error('Failed to fetch canary tests');
+  return res.json();
+}
+
+/** GET /api/canary/agent/{agent_id}/trust — Full trust report */
+export async function fetchAgentTrustReport(agentId: number): Promise<AgentTrustReport> {
+  const res = await fetch(`${API_BASE_URL}/api/canary/agent/${agentId}/trust`, {
+    headers: { 'Accept': 'application/json' },
+  });
+  if (!res.ok) throw new Error(`Failed to fetch trust report for agent #${agentId}`);
+  return res.json();
+}
+
+/** POST /api/canary/agent/{agent_id}/promote — Evaluate & trigger promotion */
+export async function promoteAgent(agentId: number): Promise<PromotionCheckResponse> {
+  const res = await fetch(`${API_BASE_URL}/api/canary/agent/${agentId}/promote`, {
+    method: 'POST',
+    headers: { 'Accept': 'application/json' },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || `Failed to evaluate promotion for agent #${agentId}`);
   }
   return res.json();
 }

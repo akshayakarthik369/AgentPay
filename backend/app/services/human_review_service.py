@@ -181,102 +181,103 @@ def resolve_human_review(
 
     now = datetime.utcnow()
 
-    # Use a savepoint to rollback cleanly on nested exception
     try:
-        with db.begin_nested():
-            if decision_upper == "APPROVE":
-                # Treat as PASS-equivalent
-                verif.decision = "PASS"
-                verif.status = "passed"
-                verif.completed_at = now
-                verif.updated_at = now
+        if decision_upper == "APPROVE":
+            # Treat as PASS-equivalent
+            verif.decision = "PASS"
+            verif.status = "passed"
+            verif.completed_at = now
+            verif.updated_at = now
 
-                # Mark escrow releasable
-                if escrow:
-                    escrow_service.update_escrow_from_verification(db, verif.id, "PASS")
-                
-                # Reuse Phase 12 automatic settlement
-                if escrow:
-                    settlement = settlement_service.auto_settle_releasable_escrow(db, escrow.id)
-                    if not settlement or settlement.status != "completed":
-                        raise Exception("Automated escrow settlement failed during approval.")
+            # Mark escrow releasable
+            if escrow:
+                escrow_service.update_escrow_from_verification(db, verif.id, "PASS")
+            
+            # Reuse Phase 12 automatic settlement
+            if escrow:
+                settlement = settlement_service.auto_settle_releasable_escrow(db, escrow.id)
+                if not settlement or settlement.status != "completed":
+                    raise Exception("Automated escrow settlement failed during approval.")
 
-                # Resolve review
-                review.status = "approved"
-                review.decision = "APPROVE"
-                review.reviewer_note = reviewer_note
-                review.resolved_at = now
-                review.updated_at = now
+            # Resolve review
+            review.status = "approved"
+            review.decision = "APPROVE"
+            review.reviewer_note = reviewer_note
+            review.resolved_at = now
+            review.updated_at = now
 
-                _log_human_review_audit(
-                    db,
-                    review_id=review.id,
-                    action="review_approved",
-                    actor_type="human_reviewer",
-                    message=f"Arbitrator approved submission. Notes: {reviewer_note}"
-                )
-                _log_human_review_audit(
-                    db,
-                    review_id=review.id,
-                    action="settlement_triggered",
-                    message="Escrow release and settlement successfully processed."
-                )
-                _log_human_review_audit(
-                    db,
-                    review_id=review.id,
-                    action="reputation_update_triggered",
-                    message="Reputation recalculation triggered for positive outcome."
-                )
+            _log_human_review_audit(
+                db,
+                review_id=review.id,
+                action="review_approved",
+                actor_type="human_reviewer",
+                message=f"Arbitrator approved submission. Notes: {reviewer_note}"
+            )
+            _log_human_review_audit(
+                db,
+                review_id=review.id,
+                action="settlement_triggered",
+                message="Escrow release and settlement successfully processed."
+            )
+            _log_human_review_audit(
+                db,
+                review_id=review.id,
+                action="reputation_update_triggered",
+                message="Reputation recalculation triggered for positive outcome."
+            )
 
-            else:  # REJECT
-                # Treat as FAIL-equivalent
-                verif.decision = "FAIL"
-                verif.status = "failed"
-                verif.completed_at = now
-                verif.updated_at = now
+        else:  # REJECT
+            # Treat as FAIL-equivalent
+            verif.decision = "FAIL"
+            verif.status = "failed"
+            verif.completed_at = now
+            verif.updated_at = now
 
-                if task:
-                    task.status = "failed"
-                    task.updated_at = now
-                if worker:
-                    worker.status = "available"
-                    worker.updated_at = now
+            if task:
+                task.status = "failed"
+                task.updated_at = now
+            if worker:
+                worker.status = "available"
+                worker.updated_at = now
 
-                # Escrow remains blocked (already blocked in verif REVIEW stage)
+            # Escrow remains blocked (already blocked in verif REVIEW stage)
 
-                # Resolve review
-                review.status = "rejected"
-                review.decision = "REJECT"
-                review.reviewer_note = reviewer_note
-                review.resolved_at = now
-                review.updated_at = now
+            # Resolve review
+            review.status = "rejected"
+            review.decision = "REJECT"
+            review.reviewer_note = reviewer_note
+            review.resolved_at = now
+            review.updated_at = now
 
-                _log_human_review_audit(
-                    db,
-                    review_id=review.id,
-                    action="review_rejected",
-                    actor_type="human_reviewer",
-                    message=f"Arbitrator rejected submission. Notes: {reviewer_note}"
-                )
-                _log_human_review_audit(
-                    db,
-                    review_id=review.id,
-                    action="reputation_update_triggered",
-                    message="Reputation recalculation triggered for failure outcome."
-                )
+            _log_human_review_audit(
+                db,
+                review_id=review.id,
+                action="review_rejected",
+                actor_type="human_reviewer",
+                message=f"Arbitrator rejected submission. Notes: {reviewer_note}"
+            )
+            _log_human_review_audit(
+                db,
+                review_id=review.id,
+                action="reputation_update_triggered",
+                message="Reputation recalculation triggered for failure outcome."
+            )
 
-                # Trigger reputation update for FAIL
-                try:
-                    reputation_service.on_verification_finalized(db, verif.id)
-                except Exception as rep_err:
-                    print(f"Reputation trigger note: {rep_err}")
+            # Trigger reputation update for FAIL
+            try:
+                reputation_service.on_verification_finalized(db, verif.id)
+            except Exception as rep_err:
+                print(f"Reputation trigger note: {rep_err}")
 
-        db.flush()
+        db.commit()
+        db.refresh(review)
         return review
 
     except HTTPException as http_e:
+        db.rollback()
         raise http_e
     except Exception as e:
+        db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to resolve review due to internal transaction error: {str(e)}"

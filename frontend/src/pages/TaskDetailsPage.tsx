@@ -496,9 +496,9 @@ export const TaskDetailsPage: React.FC<TaskDetailsPageProps> = ({
                           onNavigate('verification-details');
                         }
                       }}
-                      className="flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold text-xs shadow-md transition-all"
+                      className="flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-[#172554] via-[#1E3A8A] to-[#3155D9] hover:brightness-110 text-white font-bold text-xs shadow-md transition-all cursor-pointer"
                     >
-                      <ShieldCheck className="w-4 h-4" />
+                      <ShieldCheck className="w-4 h-4 text-blue-300" />
                       <span>View Verification Dossier</span>
                     </button>
                   )}
@@ -648,7 +648,7 @@ export const TaskDetailsPage: React.FC<TaskDetailsPageProps> = ({
                 </div>
                 <button
                   onClick={() => setBidToSelect(bestBid)}
-                  className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs font-mono transition-all shadow-sm shrink-0"
+                  className="px-4 py-2 rounded-xl bg-[#172554] hover:bg-[#1E3A8A] text-white font-bold text-xs font-mono transition-all shadow-sm shrink-0 cursor-pointer"
                 >
                   Select Agent
                 </button>
@@ -726,7 +726,7 @@ export const TaskDetailsPage: React.FC<TaskDetailsPageProps> = ({
                           ) : realTask?.status !== 'assigned' ? (
                             <button
                               onClick={() => setBidToSelect(b)}
-                              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-cyan-500 hover:text-slate-950 text-[#3155D9] text-xs font-mono font-semibold border border-slate-300 hover:border-cyan-400 transition-all shadow-sm"
+                              className="px-3 py-1.5 rounded-xl bg-[#172554] hover:bg-[#1E3A8A] text-white text-xs font-mono font-semibold transition-all shadow-sm cursor-pointer"
                             >
                               Select Agent
                             </button>

@@ -123,9 +123,9 @@ def _events_for_task(db: Session, task: Task) -> List[dict]:
         if ex.started_at:
             events.append(_activity(
                 "execution_started", f"Execution Started",
-                f"Worker agent #{ex.assigned_agent_id} started executing task {task.task_code or task.id}.",
+                f"Worker agent #{ex.agent_id} started executing task {task.task_code or task.id}.",
                 ex.started_at,
-                task_id=task.id, agent_id=ex.assigned_agent_id,
+                task_id=task.id, agent_id=ex.agent_id,
                 related_entity_type="execution", related_entity_id=ex.id,
                 status="running",
             ))
@@ -134,7 +134,7 @@ def _events_for_task(db: Session, task: Task) -> List[dict]:
                 "execution_completed", f"Execution Completed",
                 f"Execution finished with status '{ex.status}'.",
                 ex.completed_at,
-                task_id=task.id, agent_id=ex.assigned_agent_id,
+                task_id=task.id, agent_id=ex.agent_id,
                 related_entity_type="execution", related_entity_id=ex.id,
                 status=ex.status,
             ))

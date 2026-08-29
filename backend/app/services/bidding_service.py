@@ -103,6 +103,20 @@ def create_bid(db: Session, payload: BidCreate) -> Bid:
     from app.services import security_service
     security_service.check_agent_eligibility(agent, "submit bids")
 
+    # Phase 21: Trust & Canary Lifecycle Gate
+    from app.config.trust import TRUST_BLOCKED_STATUSES, TRUST_STATUS_PROVISIONAL, PROVISIONAL_MAX_REWARD
+    if getattr(agent, "trust_status", None) in TRUST_BLOCKED_STATUSES:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Agent '{agent.name}' is in '{agent.trust_status}' trust status and must pass Canary benchmark before bidding.",
+        )
+
+    if getattr(agent, "trust_status", None) == TRUST_STATUS_PROVISIONAL and task.reward > PROVISIONAL_MAX_REWARD:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Provisional agents are capped at tasks up to {PROVISIONAL_MAX_REWARD:.1f} AP (Task reward: {task.reward:.1f} AP). Complete 3 verified tasks to unlock Trusted tier.",
+        )
+
     if not agent.is_active:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

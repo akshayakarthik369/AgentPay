@@ -12,6 +12,7 @@ class AgentCreate(BaseModel):
     description: Optional[str] = None
     capabilities: List[str]
     status: Optional[str] = "available"
+    trust_status: Optional[str] = "pending_canary"
 
     @field_validator("name")
     @classmethod
@@ -42,10 +43,6 @@ class AgentCreate(BaseModel):
     @classmethod
     def validate_capabilities(cls, v: List[str], info) -> List[str]:
         cleaned = [c.strip() for c in v if c.strip()]
-        # Check if type is worker/verifier, they must have capabilities
-        # Note: field_validators are run in order. Since agent_type comes before capabilities in model field order,
-        # we can't reliably read the field values from other fields without a model validator.
-        # Let's check capabilities list length here first.
         return cleaned
 
     @model_validator(mode="after")
@@ -65,6 +62,7 @@ class AgentUpdate(BaseModel):
     status: Optional[str] = None
     agent_type: Optional[str] = None
     is_active: Optional[bool] = None
+    trust_status: Optional[str] = None
 
     @field_validator("name")
     @classmethod
@@ -129,6 +127,12 @@ class AgentResponse(BaseModel):
     success_rate: float
     average_verification_score: float
     is_active: bool
+    # Phase 18 Security & Phase 21 Trust fields
+    trust_status: Optional[str] = "trusted"
+    risk_score: Optional[float] = 0.0
+    is_suspended: Optional[bool] = False
+    suspension_reason: Optional[str] = None
+    violation_count: Optional[int] = 0
     created_at: datetime
     updated_at: datetime
 

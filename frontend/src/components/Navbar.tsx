@@ -66,7 +66,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'wallet',           label: 'Wallet',        icon: <Wallet className="w-3.5 h-3.5" /> },
     { id: 'verification',     label: 'Verification',  icon: <ShieldCheck className="w-3.5 h-3.5" /> },
     { id: 'reputation',       label: 'Reputation',    icon: <Award className="w-3.5 h-3.5" /> },
-    { id: 'disputes',         label: 'Human Review',  icon: <Gavel className="w-3.5 h-3.5" /> },
+    { id: 'disputes',         label: 'Disputes & Review', icon: <Gavel className="w-3.5 h-3.5" /> },
     { id: 'activity',         label: 'Activity',      icon: <Activity className="w-3.5 h-3.5" /> },
   ];
 

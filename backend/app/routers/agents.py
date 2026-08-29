@@ -44,6 +44,7 @@ def list_agents(
     capability: Optional[str] = Query(None, description="Filter by capabilities"),
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
     search: Optional[str] = Query(None, description="Search across name, description, capabilities"),
+    trust_status: Optional[str] = Query(None, description="Filter by trust_status (pending_canary, provisional, trusted, canary_failed, suspended)"),
     db: Session = Depends(get_db),
 ):
     """Retrieve list of registered agents matching query filters."""
@@ -53,7 +54,8 @@ def list_agents(
         status=status_filter, 
         capability=capability, 
         is_active=is_active, 
-        search=search
+        search=search,
+        trust_status=trust_status,
     )
 
 @router.get(
